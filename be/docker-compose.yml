@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: timescaledb
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dat11102004
+      POSTGRES_DB: projectIII
+    volumes:
+      - ./data:/var/lib/postgresql/data
