@@ -2,6 +2,7 @@ import { Box, Button, Checkbox, FormControlLabel, Paper, TextField, Typography }
 import { useState } from "react"
 import bg from "../assets/background.jpg";
 import { useNavigate } from "react-router-dom";
+import apiClient from "../api/axiosConfig";
 
 const LoginPage = () => {
     const [email, setEmail] = useState("");
@@ -9,10 +10,33 @@ const LoginPage = () => {
     const [remember, setRemember] = useState(false);
     const navigate = useNavigate();
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        navigate('/dashboard');
-        console.log(`Email: ${email} and password: ${password}`);
+        try {
+            const response = await apiClient.post('/auth/login', {
+                email,
+                password,
+            })
+            const responseData = response.data.data;
+            console.log(responseData);
+
+            const accessToken = responseData.access_token;
+            const userObject = responseData.user;
+            const userString = JSON.stringify(userObject);
+            
+            if (remember) {
+                localStorage.setItem('accessToken', accessToken);
+                localStorage.setItem('user', userString);
+            } else {
+                sessionStorage.setItem('accessToken', accessToken);
+                sessionStorage.setItem('user', userString);
+            }
+            console.log(accessToken);
+
+            navigate('/dashboard');
+        } catch (err) {
+            console.log("Error", err);
+        }
     }
 
     return (

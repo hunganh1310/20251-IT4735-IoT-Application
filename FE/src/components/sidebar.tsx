@@ -28,7 +28,11 @@ export default function Sidebar({ open }) {
   ];
 
   const handleLogout = () => {
-    // Xóa token, v.v...
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('user');
+
+    sessionStorage.removeItem('accessToken');
+    sessionStorage.removeItem('user');
     navigate("/login");
   };
 
