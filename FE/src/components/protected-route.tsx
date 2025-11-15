@@ -5,9 +5,13 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const user = localStorage.getItem("user");
+  let accessToken = localStorage.getItem('accessToken');
 
-  if (!user) {
+  if (!accessToken) {
+    accessToken = sessionStorage.getItem('accessToken');
+  }
+
+  if (!accessToken) {
     return <Navigate to="/login" replace />;
   }
 
