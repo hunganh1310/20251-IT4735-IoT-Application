@@ -3,40 +3,46 @@ import { useState } from "react"
 import bg from "../assets/background.jpg";
 import { useNavigate } from "react-router-dom";
 import apiClient from "../api/axiosConfig";
+import InputAdornment from '@mui/material/InputAdornment';
+import IconButton from '@mui/material/IconButton';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
 const LoginPage = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [remember, setRemember] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
 
     const handleLogin = async (e) => {
         e.preventDefault();
-        try {
-            const response = await apiClient.post('/auth/login', {
-                email,
-                password,
-            })
-            const responseData = response.data.data;
-            console.log(responseData);
+        navigate('/dashboard');
+        // try {
+        //     const response = await apiClient.post('/auth/login', {
+        //         email,
+        //         password,
+        //     })
+        //     const responseData = response.data.data;
+        //     console.log(responseData);
 
-            const accessToken = responseData.access_token;
-            const userObject = responseData.user;
-            const userString = JSON.stringify(userObject);
+        //     const accessToken = responseData.access_token;
+        //     const userObject = responseData.user;
+        //     const userString = JSON.stringify(userObject);
             
-            if (remember) {
-                localStorage.setItem('accessToken', accessToken);
-                localStorage.setItem('user', userString);
-            } else {
-                sessionStorage.setItem('accessToken', accessToken);
-                sessionStorage.setItem('user', userString);
-            }
-            console.log(accessToken);
+        //     if (remember) {
+        //         localStorage.setItem('accessToken', accessToken);
+        //         localStorage.setItem('user', userString);
+        //     } else {
+        //         sessionStorage.setItem('accessToken', accessToken);
+        //         sessionStorage.setItem('user', userString);
+        //     }
+        //     console.log(accessToken);
 
-            navigate('/dashboard');
-        } catch (err) {
-            console.log("Error", err);
-        }
+        //     navigate('/dashboard');
+        // } catch (err) {
+        //     console.log("Error", err);
+        // }
     }
 
     return (
@@ -81,7 +87,7 @@ const LoginPage = () => {
                     />
                     <TextField
                         label="Mật khẩu"
-                        type="password"
+                        type={ showPassword ? "text" : "password" }
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         fullWidth
@@ -91,6 +97,18 @@ const LoginPage = () => {
                             "& .MuiOutlinedInput-root": {
                                 borderRadius: 2
                             }
+                        }}
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        edge="end"
+                                    >
+                                        {showPassword ? <Visibility /> : <VisibilityOff />}
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
                         }}
                     />
 
