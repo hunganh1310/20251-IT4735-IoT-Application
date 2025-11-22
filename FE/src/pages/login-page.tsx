@@ -17,32 +17,31 @@ const LoginPage = () => {
 
     const handleLogin = async (e) => {
         e.preventDefault();
-        navigate('/dashboard');
-        // try {
-        //     const response = await apiClient.post('/auth/login', {
-        //         email,
-        //         password,
-        //     })
-        //     const responseData = response.data.data;
-        //     console.log(responseData);
+        try {
+            const response = await apiClient.post('/auth/login', {
+                email,
+                password,
+            })
+            const responseData = response.data.data;
+            console.log(responseData);
 
-        //     const accessToken = responseData.access_token;
-        //     const userObject = responseData.user;
-        //     const userString = JSON.stringify(userObject);
+            const accessToken = responseData.access_token;
+            const userObject = responseData.user;
+            const userString = JSON.stringify(userObject);
             
-        //     if (remember) {
-        //         localStorage.setItem('accessToken', accessToken);
-        //         localStorage.setItem('user', userString);
-        //     } else {
-        //         sessionStorage.setItem('accessToken', accessToken);
-        //         sessionStorage.setItem('user', userString);
-        //     }
-        //     console.log(accessToken);
+            if (remember) {
+                localStorage.setItem('accessToken', accessToken);
+                localStorage.setItem('user', userString);
+            } else {
+                sessionStorage.setItem('accessToken', accessToken);
+                sessionStorage.setItem('user', userString);
+            }
+            console.log(accessToken);
 
-        //     navigate('/dashboard');
-        // } catch (err) {
-        //     console.log("Error", err);
-        // }
+            navigate('/dashboard');
+        } catch (err) {
+            console.log("Error", err);
+        }
     }
 
     return (
