@@ -15,11 +15,16 @@ export default function Dashboard() {
   const openMenu = Boolean(anchorEl);
 
   const [user, setUser] = useState(() => {
-      const savedUser = localStorage.getItem("user");
+      let savedUser = localStorage.getItem("user");
+      if (!savedUser) {
+        savedUser = sessionStorage.getItem("user");
+      }
       return savedUser ? JSON.parse(savedUser) : {};
   });
 
   const handleToggleSidebar = () => setOpen(!open);
+
+  console.log("Dữ liệu user trong React:", user);
 
   const handleUserUpdated = (newUser) => {
       setUser(newUser);
@@ -88,7 +93,7 @@ export default function Dashboard() {
 
       <Box component="main" sx={{ flexGrow: 1, bgcolor: "#f5f5f5", minHeight: "100vh", transition: "margin 0.3s ease" }}>
         <Toolbar />
-        <Outlet />
+        <Outlet context={handleUserUpdated} />
       </Box>
     </Box>
   );

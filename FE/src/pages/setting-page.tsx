@@ -1,20 +1,30 @@
 import { Box, Button, TextField, Typography, Avatar, Divider, Stack, Alert } from "@mui/material";
 import { useState, useEffect } from "react";
+import { useOutletContext } from "react-router-dom";
 import SaveIcon from '@mui/icons-material/Save';
+import InputAdornment from '@mui/material/InputAdornment';
+import IconButton from '@mui/material/IconButton';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
 const SettingPage = () => {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [avatarUrl, setAvatarUrl] = useState("");
+    const onUserUpdated = useOutletContext<any>();
 
     const [currentPassword, setCurrentPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmNewPassword, setConfirmNewPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
 
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     useEffect(() => {
-        const userString = localStorage.getItem("user");
+        let userString = localStorage.getItem("user");
+        if (!userString) {
+            userString = sessionStorage.getItem("user");
+        }
         if (userString) {
             const user = JSON.parse(userString);
             setName(user.name || "");
@@ -47,14 +57,27 @@ const SettingPage = () => {
             payload.newPassword = newPassword;
         }
 
-        setMessage({ type: 'success', text: "Cập nhật thông tin thành công!" });
+        let storageType = 'session';
+        let userString = sessionStorage.getItem("user");
+        if (localStorage.getItem("user")) {
+            storageType = 'local';
+            userString = localStorage.getItem("user");
+        }  
         
-        const userString = localStorage.getItem("user");
         if(userString) {
             const currentUser = JSON.parse(userString);
             const updatedUser = { ...currentUser, name: name };
-            localStorage.setItem("user", JSON.stringify(updatedUser));
+            if (storageType === 'local') {
+                localStorage.setItem("user", JSON.stringify(updatedUser));
+            } else {
+                sessionStorage.setItem("user", JSON.stringify(updatedUser));
+            }
+            if (onUserUpdated) {
+                onUserUpdated(updatedUser);
+            }
         }
+
+        setMessage({ type: 'success', text: "Cập nhật thông tin thành công!" });
 
         setCurrentPassword("");
         setNewPassword("");
@@ -116,16 +139,28 @@ return (
 
                     <TextField
                         label="Mật khẩu hiện tại"
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
                         fullWidth
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        edge="end"
+                                    >
+                                        {showPassword ? <Visibility /> : <VisibilityOff />}
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
+                        }}
                     />
                     
                     <Box display="grid" gridTemplateColumns={{ xs: '1fr', md: '1fr 1fr' }} gap={3}>
                         <TextField
                             label="Mật khẩu mới"
-                            type="password"
+                            type="text"
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
                             fullWidth
