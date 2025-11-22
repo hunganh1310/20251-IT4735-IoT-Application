@@ -1,6 +1,6 @@
-import { Box, Button, TextField, IconButton, Avatar, Menu, Typography } from "@mui/material";
+import { Box, IconButton, Avatar, Menu, Typography } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
-import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface ProfileCardProps {
   anchorEl: null | HTMLElement;
@@ -9,44 +9,12 @@ interface ProfileCardProps {
   user: any;
 }
 
-const ProfileCard = ({ anchorEl, open, onClose, user, onUserUpdated }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-
-  useEffect(() => {
-    if (open) {
-      setName(user?.name || "");
-      setEmail(user?.email || "");
-      setIsEditing(false);
-    }
-  }, [user, open]);
+const ProfileCard = ({ anchorEl, open, onClose, user }: ProfileCardProps) => {
+  const navigate  = useNavigate();
 
   const handleEditClick = () => {
-    setIsEditing(true);
-  };
-
-  const handleCancel = () => {
-    if (isEditing) {
-      setIsEditing(false);
-      setName(user?.name || "");
-      setEmail(user?.email || "");
-    } else {
-      onClose();
-    }
-  };
-
-  const handleSave = () => {
-    console.log("Saving...", name, email);
-    
-    const updatedUser = { ...user, name, email };
-    localStorage.setItem("user", JSON.stringify(updatedUser));
-
-    if (onUserUpdated) {
-        onUserUpdated(updatedUser);
-    }
-    setIsEditing(false);
     onClose();
+    navigate("/dashboard/settings/");
   };
 
   return (
@@ -81,14 +49,14 @@ const ProfileCard = ({ anchorEl, open, onClose, user, onUserUpdated }) => {
         
         <IconButton
           size="small"
-          onClick={isEditing ? handleCancel : handleEditClick}
+          onClick={handleEditClick}
           sx={{
             position: "absolute",
             top: 0,
             right: 0,
-            color: isEditing ? "primary.main" : "action.active",
+            color: "action.active",
           }}
-          title={isEditing ? "Hủy chỉnh sửa" : "Chỉnh sửa thông tin"}
+          title="Chỉnh sửa thông tin"
         >
           <EditIcon />
         </IconButton>
@@ -97,7 +65,7 @@ const ProfileCard = ({ anchorEl, open, onClose, user, onUserUpdated }) => {
         <Avatar
           alt={user?.name}
           src={user?.avatarUrl}
-          sx={{ width: 80, height: 80, bgcolor: "#1976d2", mb:0, fontSize: "2rem" }}
+          sx={{ width: 80, height: 80, bgcolor: "#1976d2", fontSize: "2rem" }}
         >
           {user?.name?.charAt(0).toUpperCase()}
         </Avatar>
@@ -106,42 +74,9 @@ const ProfileCard = ({ anchorEl, open, onClose, user, onUserUpdated }) => {
             <Typography variant="h6" fontWeight="bold">
                 {user?.name || "Guest"}
             </Typography>
-        </Box>
-
-        {/* Form nhập liệu */}
-        <Box sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 2 }}>
-          <TextField
-            label="Tên hiển thị"
-            fullWidth
-            size="small"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled={!isEditing}
-          />
-          <TextField
-            label="Email"
-            fullWidth
-            size="small"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={!isEditing}
-          />
-        </Box>
-
-        {/* Nút hành động */}
-        <Box sx={{ display: "flex", gap: 1, mt: 3, width: "100%", justifyContent: "flex-end" }}>
-          <Button variant="outlined" size="small" onClick={handleCancel}>
-            Cancel
-          </Button>
-
-          <Button
-            variant="contained"
-            size="small"
-            onClick={handleSave}
-            disabled={!isEditing}
-          >
-            Save
-          </Button>
+            <Typography variant="body2" color="text.secondary">
+                {user?.email || "No email provided"}
+            </Typography>
         </Box>
       </Box>
     </Menu>
