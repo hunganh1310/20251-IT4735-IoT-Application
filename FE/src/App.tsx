@@ -7,30 +7,34 @@ import UsersPage from "./pages/users-page";
 import SettingPage from "./pages/setting-page";
 import ProtectedRoute from "./components/protected-route";
 import ForgotPasswordPage from "./pages/forgot-password-page";
+import { ToastContainer } from "react-toastify";
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Navigate to ="/login" />} />
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-               <Dashboard />
-            </ProtectedRoute>
-          } 
-        >
-          <Route path="home" element={<HomePage />} />
-          <Route path="users" element={<UsersPage />} />
-          <Route path="settings" element={<SettingPage />} />
-        </Route>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        {/* <Route path="*" element={<Navigate to="/login" />} /> */}
-      </Routes>
-    </Router>
+    <>
+      <ToastContainer position="bottom-left" autoClose={2000} />
+      <Router>
+        <Routes>
+          <Route path="/" element={<Navigate to ="/login" />} />
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          >
+            <Route path="home" element={<HomePage />} />
+            <Route path="users" element={<UsersPage />} />
+            <Route path="settings" element={<SettingPage />} />
+          </Route>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="*" element={<Navigate to="/login" />} />
+        </Routes>
+      </Router>
+    </>
   );
 }
 
