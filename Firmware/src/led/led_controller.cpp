@@ -35,6 +35,32 @@ bool LEDController::init() {
     return true;
 }
 
+void LEDController::setRadarSensor(ld2410* radarSensor) {
+    radar = radarSensor;
+    Serial.println("[LED] Radar sensor attached");
+}
+
+void LEDController::enableAutoDetection(bool enabled) {
+    autoDetectionEnabled = enabled;
+    if (enabled) {
+        lastManualMode = currentMode;
+        Serial.println("[LED] Auto detection enabled");
+    } else {
+        Serial.println("[LED] Auto detection disabled");
+    }
+}
+
+bool LEDController::isAutoDetectionEnabled() {
+    return autoDetectionEnabled;
+}
+
+bool LEDController::checkPresence() {
+    if (radar == nullptr) {
+        return false;
+    }
+    return radar->presenceDetected();
+}
+
 void LEDController::setMode(LEDMode mode) {
     currentMode = mode;
     

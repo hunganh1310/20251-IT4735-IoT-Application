@@ -7,16 +7,16 @@
 #define CONFIG_H
 
 // ==================== WiFi Configuration ====================
-// WiFi credentials are loaded from .env file via build flags
-// Create .env file from .env.example and set your credentials there
-// WIFI_SSID and WIFI_PASSWORD are defined at compile time
-#ifndef WIFI_SSID
-#define WIFI_SSID "default_ssid"  // Fallback if .env not found
-#endif
-#ifndef WIFI_PASSWORD
-#define WIFI_PASSWORD "default_password"  // Fallback if .env not found
-#endif
+#define WIFI_SSID "BXT235"  // Fallback if .env not found
+#define WIFI_PASSWORD "321Thai@"  // Fallback if .env not found
 #define WIFI_TIMEOUT 10000  // Connection timeout in ms
+
+// ==================== MQTT Server Configuration ====================
+#define MQTT_SERVER "990608f05d9049929317380e48de94d5.s1.eu.hivemq.cloud"
+#define MQTT_PORT 8883
+#define MQTT_USER "mqtt1"
+#define MQTT_PASSWORD "Mqtt123456"
+#define MQTT_CLIENT_ID "Device_01"
 
 // ==================== LED Configuration ====================
 #define LED_PIN 18
@@ -34,6 +34,12 @@
 #define SENSOR_READ_INTERVAL 1000    // Read sensors every 1 second
 #define DATA_SEND_INTERVAL 5000      // Send data to server every 5 seconds
 #define NTP_UPDATE_INTERVAL 3600000  // Update time every hour
+
+// ==================== Turbidity Sensor Configuration ====================
+#define TURBIDITY_SENSOR_PIN 34
+
+// ==================== DS18B20 Sensor Configuration ====================
+#define DS18B20_PIN 21
 
 // ==================== NTP Configuration ====================
 #define NTP_SERVER "pool.ntp.org"
