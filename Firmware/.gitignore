@@ -6,3 +6,4 @@
 
 # Environment variables (contains sensitive credentials)
 .env
+test/
