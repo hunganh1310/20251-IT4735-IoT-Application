@@ -10,6 +10,9 @@
 #include <WiFi.h>
 #include <ld2410.h>
 #include <time.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 // Project headers
 #include "config.h"
@@ -24,16 +27,19 @@ ld2410 radar;
 TurbiditySensor turbiditySensor(TURBIDITY_SENSOR_PIN);
 DS18B20Sensor temperatureSensor(DS18B20_PIN);
 MQTTHandler mqttHandler;
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // ==================== Timing Variables ====================
 unsigned long lastSensorRead = 0;
 unsigned long lastDataSend = 0;
 unsigned long lastLEDStatusPublish = 0;
+unsigned long lastDisplayUpdate = 0;
 
 // ==================== Sensor Data ====================
 float currentTemperature = 0.0;
 float currentTurbidity = 0.0;
 String currentWaterQuality = "Unknown";
+float currentPH = 7.0;
 
 // ==================== LED State ====================
 LEDMode lastLEDMode = MODE_OFF;
@@ -50,15 +56,18 @@ const unsigned long RADAR_CHECK_INTERVAL = 500; // Check radar every 500ms
 void setupWiFi();
 void setupNTP();
 void setupRadar();
+void setupOLED();
 void readSensors();
 void publishSensorData();
 void publishLEDStatus();
 void publishRadarStatus();
+void updateDisplay();
 void mqttCallback(char *topic, uint8_t *payload, unsigned int length);
 void handleLEDControl(JsonDocument &doc);
 void handleRadarControl(JsonDocument &doc);
 void checkRadarAndControlLED();
 void parseHexColor(const char *hexColor, uint8_t &r, uint8_t &g, uint8_t &b);
+float simulatePH();
 
 // ==================== Setup ====================
 void setup() {
@@ -75,11 +84,17 @@ void setup() {
   // Setup NTP for time synchronization
   setupNTP();
 
+  // Setup OLED Display
+  setupOLED();
+
   // Configure ADC for turbidity sensor
   analogReadResolution(12);
   analogSetAttenuation(ADC_11db);
   // Also set per-pin attenuation to ensure correct range on selected pin
   analogSetPinAttenuation(TURBIDITY_SENSOR_PIN, ADC_11db);
+
+  // Initialize random seed for pH simulation
+  randomSeed(analogRead(0));
 
   // Initialize LED Controller
   if (!ledController.init()) {
@@ -148,6 +163,12 @@ void loop() {
     publishSensorData();
   }
 
+  // Update OLED display periodically
+  if (currentMillis - lastDisplayUpdate >= DISPLAY_UPDATE_INTERVAL) {
+    lastDisplayUpdate = currentMillis;
+    updateDisplay();
+  }
+
   // Publish LED status if mode or brightness changed
   LEDMode currentMode = ledController.getMode();
   if (currentMode != lastLEDMode ||
@@ -169,8 +190,7 @@ void setupWiFi() {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   unsigned long startAttempt = millis();
-  while (WiFi.status() != WL_CONNECTED &&
-         millis() - startAttempt < WIFI_TIMEOUT) {
+  while (WiFi.status() != WL_CONNECTED && millis() - startAttempt < WIFI_TIMEOUT) {
     delay(500);
     Serial.print(".");
   }
@@ -262,13 +282,10 @@ void readSensors() {
   Serial.print(currentWaterQuality);
   Serial.println(")");
 
-  float voltage = turbiditySensor.readVoltage();
-  int rawValue = turbiditySensor.readRawValue();
-  Serial.print("[Sensor] Turbidity Voltage: ");
-  Serial.print(voltage);
-  Serial.print(" V (Raw: ");
-  Serial.print(rawValue);
-  Serial.println(")");
+  // Simulate pH reading
+  currentPH = simulatePH();
+  Serial.print("[Sensor] pH: ");
+  Serial.println(currentPH, 2);
 }
 
 // ==================== Publish Sensor Data ====================
@@ -278,9 +295,19 @@ void publishSensorData() {
     return;
   }
 
-  // Publish combined sensor data
-  bool success = mqttHandler.publishSensorData(
-      currentTemperature, currentTurbidity, currentWaterQuality);
+  // Create JSON document with all sensor data
+  StaticJsonDocument<256> doc;
+  doc["temperature"] = currentTemperature;
+  doc["turbidity"] = currentTurbidity;
+  doc["water_quality"] = currentWaterQuality;
+  doc["ph"] = currentPH;
+  doc["timestamp"] = millis();
+
+  String jsonString;
+  serializeJson(doc, jsonString);
+
+  // Publish to MQTT
+  bool success = mqttHandler.publishMessage(MQTT_TOPIC_SENSOR_DATA, jsonString.c_str());
 
   if (success) {
     Serial.println("[Data] Sensor data published successfully");
@@ -386,8 +413,7 @@ void handleLEDControl(JsonDocument &doc) {
       } else {
         ledController.setMode(MODE_OFF);
       }
-      Serial.println("[Control] LED manually turned " +
-                     String(ledIsOn ? "ON" : "OFF"));
+      Serial.println("[Control] LED manually turned " + String(ledIsOn ? "ON" : "OFF"));
     }
   }
 
@@ -547,3 +573,147 @@ void parseHexColor(const char *hexColor, uint8_t &r, uint8_t &g, uint8_t &b) {
   g = (colorValue >> 8) & 0xFF;
   b = colorValue & 0xFF;
 }
+
+// ==================== Setup OLED Display ====================
+void setupOLED() {
+  Serial.println("[OLED] Initializing SSD1306...");
+
+  // Initialize I2C with custom pins
+  Wire.begin(OLED_SDA, OLED_SCL);
+
+  // Initialize display
+  if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+    Serial.println("[OLED] SSD1306 allocation failed!");
+    return;
+  }
+
+  Serial.println("[OLED] SSD1306 initialized successfully");
+
+  // Clear display and show startup message
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println(F("IoT Water Monitor"));
+  display.println(F("Initializing..."));
+  display.display();
+  delay(2000);
+}
+
+// ==================== Update OLED Display ====================
+void updateDisplay() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+
+  // Line 1: Temperature
+  display.setCursor(0, 0);
+  display.print(F("Temp: "));
+  if (currentTemperature != DEVICE_DISCONNECTED_C) {
+    display.print(currentTemperature, 1);
+    display.print(F("C"));
+  } else {
+    display.print(F("ERR"));
+  }
+
+  // Line 2: Turbidity
+  display.setCursor(0, 12);
+  display.print(F("Turb: "));
+  if (currentTurbidity >= 0) {
+    display.print(currentTurbidity, 1);
+    display.print(F(" NTU"));
+  } else {
+    display.print(F("ERR"));
+  }
+
+  // Line 3: pH
+  display.setCursor(0, 24);
+  display.print(F("pH: "));
+  display.print(currentPH, 2);
+
+  // Line 4: LED Mode
+  display.setCursor(0, 36);
+  display.print(F("LED: "));
+  LEDMode mode = ledController.getMode();
+  switch (mode) {
+  case MODE_OFF:
+    display.print(F("OFF"));
+    break;
+  case MODE_SKY_SIMULATION:
+    display.print(F("SKY"));
+    break;
+  case MODE_RAIN:
+    display.print(F("RAIN"));
+    break;
+  case MODE_METEOR:
+    display.print(F("METEOR"));
+    break;
+  case MODE_APOCALYPSE:
+    display.print(F("APOCALYPSE"));
+    break;
+  case MODE_BASIC:
+    display.print(F("BASIC"));
+    break;
+  default:
+    display.print(F("UNKNOWN"));
+  }
+
+  // Line 5: Radar Mode
+  display.setCursor(0, 48);
+  display.print(F("Radar: "));
+  if (radarAutoMode) {
+    display.print(F("AUTO"));
+  } else if (radarEnabled) {
+    display.print(F("ON"));
+  } else {
+    display.print(F("OFF"));
+  }
+
+  // Line 6: Presence Detection
+  display.setCursor(0, 56);
+  if (radarEnabled && radar.presenceDetected()) {
+    uint16_t distance = radar.stationaryTargetDistance();
+    if (distance == 0) {
+      distance = radar.movingTargetDistance();
+    }
+    display.print(F("Human: "));
+    display.print(distance);
+    display.print(F("cm"));
+  } else if (radarEnabled) {
+    display.print(F("No presence"));
+  } else {
+    display.print(F("WiFi: "));
+    if (WiFi.status() == WL_CONNECTED) {
+      display.print(F("OK"));
+    } else {
+      display.print(F("NO"));
+    }
+  }
+
+  display.display();
+}
+
+// ==================== Simulate pH Sensor ====================
+float simulatePH() {
+  // Generate random pH value between PH_MIN and PH_MAX
+  // Add slight variations to simulate realistic sensor behavior
+  static float lastPH = 7.0;
+  static unsigned long lastUpdate = 0;
+  
+  unsigned long currentTime = millis();
+  
+  // Update pH value every 2 seconds with small random changes
+  if (currentTime - lastUpdate >= 2000) {
+    lastUpdate = currentTime;
+    
+    // Small random change (-0.05 to +0.05)
+    float change = (random(-50, 51) / 1000.0);
+    lastPH += change;
+    
+    // Constrain to valid range
+    lastPH = constrain(lastPH, PH_MIN, PH_MAX);
+  }
+  
+  return lastPH;
+}
+  
