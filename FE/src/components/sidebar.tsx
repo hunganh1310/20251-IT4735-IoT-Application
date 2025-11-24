@@ -14,6 +14,7 @@ import PeopleIcon from "@mui/icons-material/People";
 import SettingsIcon from "@mui/icons-material/Settings";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 const drawerWidth = 240;
 const collapsedWidth = 64;
@@ -33,6 +34,7 @@ export default function Sidebar({ open }) {
 
     sessionStorage.removeItem('accessToken');
     sessionStorage.removeItem('user');
+    toast.success("Bạn đã đăng xuất!");
     navigate("/login");
   };
 

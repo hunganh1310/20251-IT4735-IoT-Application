@@ -7,6 +7,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import { toast } from "react-toastify";
 
 const LoginPage = () => {
     const [email, setEmail] = useState("");
@@ -37,9 +38,10 @@ const LoginPage = () => {
                 sessionStorage.setItem('user', userString);
             }
             console.log(accessToken);
-
+            toast.success("Đăng ký thành công!");
             navigate('/dashboard');
         } catch (err) {
+            toast.error("Đăng nhập thất bại!");
             console.log("Error", err);
         }
     }
