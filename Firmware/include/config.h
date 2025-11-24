@@ -25,6 +25,14 @@
 #define COLOR_ORDER GRB
 #define DEFAULT_BRIGHTNESS 128
 
+// ==================== SSD1306 Configuration ====================
+#define OLED_SDA 22
+#define OLED_SCL 23
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET -1
+#define SCREEN_ADDRESS 0x3C
+
 // ==================== LD2410B Pins ====================
 #define LD_RX_PIN 16    // connect to LD2410B TX
 #define LD_TX_PIN 17    // connect to LD2410B RX
@@ -34,6 +42,11 @@
 #define SENSOR_READ_INTERVAL 1000    // Read sensors every 1 second
 #define DATA_SEND_INTERVAL 5000      // Send data to server every 5 seconds
 #define NTP_UPDATE_INTERVAL 3600000  // Update time every hour
+#define DISPLAY_UPDATE_INTERVAL 500  // Update OLED display every 500ms
+
+// ==================== pH Sensor Configuration (Simulated) ====================
+#define PH_MIN 6.9
+#define PH_MAX 7.2
 
 // ==================== Turbidity Sensor Configuration ====================
 #define TURBIDITY_SENSOR_PIN 34
