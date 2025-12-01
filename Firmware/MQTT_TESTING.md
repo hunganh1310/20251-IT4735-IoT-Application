@@ -1,77 +1,94 @@
-# MQTT Testing Guide
+# 🧪 MQTT Testing Guide
 
-Quick reference for testing MQTT communication with the ESP32 device.
+Hướng dẫn test giao tiếp MQTT với thiết bị ESP32.
 
-## MQTT Broker Configuration
+---
 
-**Server**: 990608f05d9049929317380e48de94d5.s1.eu.hivemq.cloud  
-**Port**: 8883 (TLS/SSL)  
-**Username**: mqtt1  
-**Password**: Mqtt123456  
-**Client ID**: Device_01
+## 📌 Thông tin kết nối MQTT Broker
 
-## Testing with MQTT Client
+| Thông số | Giá trị |
+|----------|---------|
+| **Protocol** | MQTT over TLS/SSL |
+| **Broker** | `<YOUR_BROKER>.hivemq.cloud` |
+| **Port** | `8883` |
+| **Username** | `<YOUR_USERNAME>` |
+| **Password** | `<YOUR_PASSWORD>` |
+| **Client ID** | `Device_01` |
 
-### Option 1: HiveMQ Web Client
-1. Visit: http://www.hivemq.com/demos/websocket-client/
-2. Connect to the broker using credentials above
-3. Subscribe to topics and send test messages
+> ⚠️ **Lưu ý**: Liên hệ team Firmware để lấy credentials thực tế.
 
-### Option 2: MQTT Explorer
+---
+
+## 🛠️ Công cụ Test MQTT
+
+### Option 1: HiveMQ Web Client (Đơn giản nhất)
+1. Truy cập: http://www.hivemq.com/demos/websocket-client/
+2. Điền thông tin kết nối
+3. Subscribe topics và gửi test messages
+
+### Option 2: MQTT Explorer (Recommended)
 1. Download: http://mqtt-explorer.com/
-2. Create new connection with credentials above
-3. Browse topics and send messages
+2. Tạo connection mới với credentials
+3. Browse và gửi messages trực quan
 
-### Option 3: mosquitto_pub/sub (Command Line)
+### Option 3: mosquitto CLI (Command Line)
 
-**Subscribe to all device topics:**
+**Subscribe tất cả topics của device:**
 ```bash
-mosquitto_sub -h 990608f05d9049929317380e48de94d5.s1.eu.hivemq.cloud \
+mosquitto_sub -h <YOUR_BROKER>.hivemq.cloud \
   -p 8883 \
-  -u mqtt1 \
-  -P Mqtt123456 \
+  -u <YOUR_USERNAME> \
+  -P <YOUR_PASSWORD> \
   -t "iot/device01/#" \
   --capath /etc/ssl/certs
 ```
 
 **Publish LED control command:**
 ```bash
-mosquitto_pub -h 990608f05d9049929317380e48de94d5.s1.eu.hivemq.cloud \
+mosquitto_pub -h <YOUR_BROKER>.hivemq.cloud \
   -p 8883 \
-  -u mqtt1 \
-  -P Mqtt123456 \
+  -u <YOUR_USERNAME> \
+  -P <YOUR_PASSWORD> \
   -t "iot/device01/led/control" \
-  -m '{"mode":"basic","brightness":200,"color":{"r":255,"g":0,"b":0}}' \
+  -m '{"led_mode":"basic","brightness":200,"color":"#FF0000"}' \
   --capath /etc/ssl/certs
 ```
 
-## Unified Control Payload
+---
 
-Device now accepts a single JSON structure on the control topic to manage LED mode, power state, auto presence mode (radar), brightness and color.
+## 📤 LED Control Payload
 
-**Control Topic**: `iot/device01/led/control` (also used for radar auto-mode flag)
+Device nhận JSON structure trên topic `iot/device01/led/control` để điều khiển LED.
 
 ### Payload Schema
+
 ```jsonc
 {
-  "led_mode": "basic",            // one of: off, basic, sky_simulation, rain, meteor, apocalypse
-  "brightness": 200,               // 0-255, ignored if led_is_on=false
-  "led_is_on": true,               // explicit on/off override (false forces off regardless of mode)
-  "presence_mode_enabled": true,   // when true and radar enabled, LED auto ON/OFF by presence (<20m)
-  "color": "#FF00AA"               // hex RGB when led_mode=basic (ignored for effects)
+  "led_mode": "basic",            // off, basic, sky_simulation, rain, meteor, apocalypse
+  "brightness": 200,               // 0-255
+  "led_is_on": true,               // true/false - bật/tắt LED
+  "presence_mode_enabled": true,   // true/false - chế độ tự động theo radar
+  "color": "#FF00AA"               // Hex RGB (chỉ dùng với mode "basic")
 }
 ```
 
-### Field Details
-- `led_mode`: Selects animation/effect; use `off` to turn off or rely on `led_is_on`.
-- `brightness`: 0 (dark) .. 255 (max). If omitted keeps previous brightness.
-- `led_is_on`: Master enable; if `false` forces LED off regardless of mode.
-- `presence_mode_enabled`: Enables radar-driven automatic control (LED ON when human <20m, OFF otherwise). Requires radar to be enabled in firmware.
-- `color`: Hex string `#RRGGBB` used only when `led_mode` = `basic`.
+### Mô tả các trường
 
-### Examples
+| Field | Type | Mô tả |
+|-------|------|-------|
+| `led_mode` | string | Chế độ LED: `off`, `basic`, `sky_simulation`, `rain`, `meteor`, `apocalypse` |
+| `brightness` | int | Độ sáng 0-255. Bỏ qua nếu giữ nguyên |
+| `led_is_on` | bool | Master switch - `false` = tắt LED bất kể mode |
+| `presence_mode_enabled` | bool | Bật chế độ tự động theo radar (LED ON khi có người < 20m) |
+| `color` | string | Màu hex `#RRGGBB` (chỉ dùng với `led_mode: basic`) |
 
-Turn LED fully off (disables any effect display):
+> 💡 Tất cả các trường đều **optional**. Chỉ gửi trường cần thay đổi.
+
+---
+
+## 📝 Ví dụ LED Control
+
+### Tắt LED hoàn toàn
 ```json
 {
   "led_mode": "off",
@@ -79,18 +96,17 @@ Turn LED fully off (disables any effect display):
 }
 ```
 
-Basic solid color purple at half brightness:
+### Bật LED màu tím, độ sáng 50%
 ```json
 {
   "led_mode": "basic",
   "brightness": 128,
   "led_is_on": true,
-  "presence_mode_enabled": false,
   "color": "#8000FF"
 }
 ```
 
-Enable sky simulation with presence auto mode (LED will still go off if no human detected):
+### Chế độ mô phỏng bầu trời + tự động theo radar
 ```json
 {
   "led_mode": "sky_simulation",
@@ -100,7 +116,7 @@ Enable sky simulation with presence auto mode (LED will still go off if no human
 }
 ```
 
-Switch to meteor effect keeping previous brightness:
+### Hiệu ứng sao băng (giữ nguyên brightness)
 ```json
 {
   "led_mode": "meteor",
@@ -108,7 +124,7 @@ Switch to meteor effect keeping previous brightness:
 }
 ```
 
-Just change color (keep current mode/basic assumed) and raise brightness:
+### Chỉ đổi màu và tăng độ sáng
 ```json
 {
   "color": "#FF00AA",
@@ -116,7 +132,7 @@ Just change color (keep current mode/basic assumed) and raise brightness:
 }
 ```
 
-Disable presence mode but keep LEDs on in apocalypse effect:
+### Hiệu ứng apocalypse, tắt chế độ tự động
 ```json
 {
   "led_mode": "apocalypse",
@@ -127,51 +143,54 @@ Disable presence mode but keep LEDs on in apocalypse effect:
 ```
 
 ### mosquitto_pub Examples
+
+**Bật LED màu hồng với presence mode:**
 ```bash
-mosquitto_pub -h 990608f05d9049929317380e48de94d5.s1.eu.hivemq.cloud -p 8883 -u mqtt1 -P Mqtt123456 \
+mosquitto_pub -h <YOUR_BROKER>.hivemq.cloud -p 8883 \
+  -u <YOUR_USERNAME> -P <YOUR_PASSWORD> \
   -t "iot/device01/led/control" \
   -m '{"led_mode":"basic","brightness":200,"led_is_on":true,"presence_mode_enabled":true,"color":"#FF00AA"}' \
   --capath /etc/ssl/certs
+```
 
-mosquitto_pub -h 990608f05d9049929317380e48de94d5.s1.eu.hivemq.cloud -p 8883 -u mqtt1 -P Mqtt123456 \
+**Tắt LED:**
+```bash
+mosquitto_pub -h <YOUR_BROKER>.hivemq.cloud -p 8883 \
+  -u <YOUR_USERNAME> -P <YOUR_PASSWORD> \
   -t "iot/device01/led/control" \
   -m '{"led_mode":"off","led_is_on":false}' \
   --capath /etc/ssl/certs
 ```
 
-## Expected Device Responses
+---
 
-### LED Status Update
-**Topic**: `iot/device01/led/status`  
-**Message Example**:
+## 📥 Device Responses
+
+### 💡 LED Status - `iot/device01/led/status`
+
 ```json
 {
   "mode": "basic",
   "brightness": 150,
-  "color": {
-    "r": 255,
-    "g": 0,
-    "b": 0
-  },
+  "color": { "r": 255, "g": 0, "b": 0 },
   "timestamp": 123456
 }
 ```
 
-### Sensor Data Update (Every 5 seconds)
-**Topic**: `iot/device01/sensors`  
-**Message Example**:
+### 📊 Sensor Data - `iot/device01/sensors` (mỗi 5 giây)
+
 ```json
 {
   "temperature": 25.5,
   "turbidity": 10.5,
-  "waterQuality": "Good",
+  "water_quality": "Good",
+  "ph": 7.1,
   "timestamp": 123456
 }
 ```
 
-### Device Status (On Connect/Disconnect)
-**Topic**: `iot/device01/status`  
-**Message Example**:
+### 🔌 Device Status - `iot/device01/status`
+
 ```json
 {
   "status": "online",
@@ -180,50 +199,58 @@ mosquitto_pub -h 990608f05d9049929317380e48de94d5.s1.eu.hivemq.cloud -p 8883 -u 
 }
 ```
 
-## Monitoring Topics
+---
 
-Subscribe to these topics to monitor device activity:
+## 📡 Monitoring Topics
 
-1. **All device topics**: `iot/device01/#`
-2. **LED status only**: `iot/device01/led/status`
-3. **Sensor data only**: `iot/device01/sensors`
-4. **Device status only**: `iot/device01/status`
+| Topic | Mô tả |
+|-------|-------|
+| `iot/device01/#` | Tất cả topics của device |
+| `iot/device01/led/status` | Chỉ trạng thái LED |
+| `iot/device01/sensors` | Chỉ dữ liệu cảm biến |
+| `iot/device01/radar/status` | Chỉ trạng thái radar |
+| `iot/device01/status` | Chỉ trạng thái device |
 
-## Troubleshooting
+---
 
-### No Response from Device
-- Check ESP32 serial monitor for MQTT connection status
-- Verify WiFi connection
-- Check MQTT credentials
-- Ensure device is powered on
+## ❌ Troubleshooting
 
-### Commands Not Working
-- Verify JSON format is valid
-- Check topic name spelling
-- Ensure brightness is 0-255
-- Ensure RGB values are 0-255
+### Device không phản hồi
+- Kiểm tra Serial Monitor của ESP32
+- Xác nhận kết nối WiFi
+- Kiểm tra MQTT credentials
+- Đảm bảo device đang bật nguồn
 
-### Connection Timeouts
-- Check internet connection
-- Verify TLS/SSL support in client
-- Try increasing connection timeout
-- Check firewall settings
+### Commands không hoạt động
+- Kiểm tra JSON format hợp lệ
+- Kiểm tra chính tả topic name
+- Đảm bảo brightness trong range 0-255
+- Đảm bảo màu sắc đúng format hex `#RRGGBB`
 
-## Python Example Script
+### Connection Timeout
+- Kiểm tra kết nối internet
+- Xác nhận TLS/SSL được hỗ trợ
+- Tăng connection timeout
+- Kiểm tra firewall settings
+
+---
+
+## 🐍 Python Example Script
 
 ```python
 import paho.mqtt.client as mqtt
 import json
 import time
 
-# MQTT Configuration
-BROKER = "990608f05d9049929317380e48de94d5.s1.eu.hivemq.cloud"
+# MQTT Configuration - Thay bằng credentials thực tế
+BROKER = "<YOUR_BROKER>.hivemq.cloud"
 PORT = 8883
-USERNAME = "mqtt1"
-PASSWORD = "Mqtt123456"
+USERNAME = "<YOUR_USERNAME>"
+PASSWORD = "<YOUR_PASSWORD>"
 
 def on_connect(client, userdata, flags, rc):
     print(f"Connected with result code {rc}")
+    # Subscribe tất cả topics của device
     client.subscribe("iot/device01/#")
 
 def on_message(client, userdata, msg):
@@ -240,17 +267,16 @@ client.on_message = on_message
 
 # Connect
 client.connect(BROKER, PORT, 60)
-
-# Start loop
 client.loop_start()
 
-# Send test commands
+# Send test command
 time.sleep(2)
 print("Sending LED control command...")
 command = {
-    "mode": "basic",
+    "led_mode": "basic",
     "brightness": 200,
-    "color": {"r": 255, "g": 0, "b": 0}
+    "led_is_on": True,
+    "color": "#FF0000"
 }
 client.publish("iot/device01/led/control", json.dumps(command))
 
@@ -263,36 +289,38 @@ except KeyboardInterrupt:
     client.disconnect()
 ```
 
-## Node.js Example Script
+---
+
+## 📦 Node.js Example Script
 
 ```javascript
 const mqtt = require('mqtt');
 
-// MQTT Configuration
+// MQTT Configuration - Thay bằng credentials thực tế
 const options = {
-  host: '990608f05d9049929317380e48de94d5.s1.eu.hivemq.cloud',
+  host: '<YOUR_BROKER>.hivemq.cloud',
   port: 8883,
   protocol: 'mqtts',
-  username: 'mqtt1',
-  password: 'Mqtt123456'
+  username: '<YOUR_USERNAME>',
+  password: '<YOUR_PASSWORD>'
 };
 
-// Connect
 const client = mqtt.connect(options);
 
 client.on('connect', () => {
   console.log('Connected to MQTT broker');
   
-  // Subscribe to all device topics
+  // Subscribe tất cả topics của device
   client.subscribe('iot/device01/#', (err) => {
     if (!err) {
       console.log('Subscribed to device topics');
       
       // Send test command
       const command = {
-        mode: 'basic',
+        led_mode: 'basic',
         brightness: 200,
-        color: { r: 255, g: 0, b: 0 }
+        led_is_on: true,
+        color: '#FF0000'
       };
       client.publish('iot/device01/led/control', JSON.stringify(command));
     }
@@ -309,3 +337,7 @@ client.on('error', (error) => {
   console.error('Connection error:', error);
 });
 ```
+
+---
+
+**Xem thêm**: [MQTT_API.md](MQTT_API.md) - Tài liệu API chi tiết cho team Software
