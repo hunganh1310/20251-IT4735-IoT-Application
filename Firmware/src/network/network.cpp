@@ -384,7 +384,7 @@ String NetworkManager::getSuccessPage() {
 </head>
 <body>
     <div class="container">
-        <div class="icon">✅</div>
+        <div class="icon"></div>
         <h1>Save successfully</h1>
         <p>Wifi Configuration saved</p>
         <p>The device will restart in</p>
