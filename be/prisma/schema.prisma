@@ -20,12 +20,23 @@ enum Role {
 }
 
 model Account {
-  id             Int             @id @default(autoincrement())
-  name           String
-  email          String          @unique
-  password       String
-  createdAt      DateTime        @default(now())
-  role           Role            @default(USER)
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String    @unique
+  password  String
+  createdAt DateTime  @default(now())
+  role      Role      @default(USER)
+  devices   Device[]
 }
+
+model Device {
+  id        Int       @id @default(autoincrement())
+  deviceId  String    @unique
+  name      String
+  createdAt DateTime  @default(now())
+  accountId Int
+  account   Account   @relation(fields: [accountId], references: [id])
+}
+
 
 

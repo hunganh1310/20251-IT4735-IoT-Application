@@ -4,6 +4,10 @@ import bg from "../assets/background.jpg";
 import { useNavigate } from "react-router-dom";
 import apiClient from "../api/axiosConfig";
 import { AxiosError } from "axios";
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
 const RegisterPage = () => {
     const [name, setName] = useState("");
@@ -11,6 +15,7 @@ const RegisterPage = () => {
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [error, setError] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
 
     const handleRegister = async (e) => {
@@ -118,6 +123,18 @@ const RegisterPage = () => {
                                 borderRadius: 2
                             }
                         }}
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        edge="end"
+                                    >
+                                        {showPassword ? <Visibility /> : <VisibilityOff />}
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
+                        }}
                     />
 
                     <TextField
@@ -162,7 +179,7 @@ const RegisterPage = () => {
                     sx={{ mt: 3, color: "text.secondary" }}
                 >
                     Đã có tài khoản?{" "}
-                    <a href="/register" style={{ textDecoration: "none", color: "#1976d2" }}>
+                    <a href="/login" style={{ textDecoration: "none", color: "#1976d2" }}>
                         Đăng nhập ngay
                     </a>
                 </Typography>

@@ -1,16 +1,32 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from "@nestjs/common";
 import { connect, IClientOptions, IClientPublishOptions, MqttClient } from "mqtt";
 import { WebsocketGateway } from '../websocket/websocket.gateway';
+import { randomUUID } from "crypto";
+import { DeviceService } from "src/device/device.service";
+import { OnEvent } from "@nestjs/event-emitter";
+import { InfluxService } from "src/influx/influx.service";
 
 @Injectable()
-export class MqttService implements OnModuleInit, OnModuleDestroy{
-    private client: MqttClient | null;
+export class MqttService implements OnModuleInit, OnModuleDestroy {
+    private client: MqttClient | null = null;
     private readonly logger = new Logger(MqttService.name);
-    private readonly topics = "home/house1/livingroom/dht11/data";
 
-    constructor(private readonly wsGateway: WebsocketGateway) {}
+    private ids: string[] = [];
+    private topics: string[] = [];
 
-    onModuleInit() {
+    constructor(
+        private readonly wsGateway: WebsocketGateway,
+        private readonly deviceService: DeviceService,
+        private readonly influxService: InfluxService
+    ) {}
+
+    private readonly uniqueIdPart = randomUUID().substring(0, 8);
+
+    async onModuleInit() {
+        this.ids = await this.deviceService.getAllDeviceIds();
+        console.log(`IDS: ${this.ids}`);
+        this.topics = this.ids.map(id => `iot/${id}/sensors`);
+
         this.connectBroker();
     }
 
@@ -19,82 +35,95 @@ export class MqttService implements OnModuleInit, OnModuleDestroy{
     }
 
     connectBroker() {
-        const url = "http://localhost";
+        const url = "mqtts://990608f05d9049929317380e48de94d5.s1.eu.hivemq.cloud:8883";
+
         const options: IClientOptions = {
-            clientId: "NestjsMqttClient",
+            clientId: `mqttx_test_01_${this.uniqueIdPart}`,
             clean: true,
             reconnectPeriod: 5000,
-            connectTimeout: 30_000,
-            keepalive: 60,
-            // username: process.env.MQTT_USERNAME,
-            // password: process.env.MQTT_PASSWORD,
-        }
+            connectTimeout: 30000,
+            keepalive: 10,
+            username: "mqtt1",
+            password: "Mqtt123456",
+            rejectUnauthorized: false, 
+        };
 
         this.logger.log(`Connecting to MQTT broker ${url} ...`);
 
         this.client = connect(url, options);
-        this.client.on('connect', (connack) => {
+
+        this.client.on('connect', () => {
             this.logger.log(`MQTT connected (clientId=${options.clientId})`);
-              
-            this.client?.subscribe(this.topics, { qos: 0 }, (err, granted) => {
-                if (err) {
-                    this.logger.error(`Subscribe error for ${this.topics}: ${err.message}`);
-                } else {
-                    this.logger.log(`Subscribed to ${this.topics} (granted: ${JSON.stringify(granted)})`);
-                }
-            }); //subcribe topic
+
+            if (this.topics.length > 0) {
+                this.client!.subscribe(this.topics, { qos: 0 }, (err, granted) => {
+                    if (err) {
+                        this.logger.error(`Subscribe error: ${err.message}`);
+                    } else {
+                        this.logger.log(`Subscribed: ${JSON.stringify(granted)}`);
+                    }
+                });
+            }
+        });
+
+        this.client.on('message', (topic, message) => {
+            const raw = message.toString();
+            const deviceId = topic.split('/')[1]; 
+            let parsed: any;
+            try {
+                parsed = JSON.parse(raw);
+            } catch {
+                parsed = raw;
+            }
+            // Validate payload
+            if (!parsed) return;
+            this.influxService.writeSensorData(deviceId,parsed.temperature,parsed.turbidity,parsed.water_quality,parsed.ph);
+            this.wsGateway.sendSensorData({
+                topic,
+                payload: parsed,
+                receivedAt: new Date().toISOString(),
+            });
         });
 
         this.client.on('reconnect', () => this.logger.log('MQTT reconnecting...'));
         this.client.on('close', () => this.logger.log('MQTT connection closed'));
         this.client.on('offline', () => this.logger.log('MQTT offline'));
-        this.client.on('error', (err) => this.logger.error('MQTT error: ' + err.message));
-
-        this.client.on('message', (topic, message: Buffer) => {
-            const payloadStr = message.toString();
-            let parsed: any = payloadStr;
-            try {
-                parsed = JSON.parse(payloadStr);
-            } catch(e) {
-                this.logger.debug(`Payload is not JSON for topic ${topic}, using raw string`);
-            }
-            this.logger.debug(`Received message on ${topic}: ${payloadStr}`);
-            
-
-            // bat websocket
-            try {
-                // tùy nhu cầu: emit cả topic, raw payload, timestamp...
-                this.wsGateway.sendSensorData({ topic, payload: parsed, receivedAt: new Date().toISOString() });
-            } catch (e) {
-                this.logger.error('Failed to emit websocket event: ' + (e as Error).message);
-            }
-        })
+        this.client.on('error', (err) => this.logger.error(`MQTT error: ${err.message}`));
     }
 
     private disconnectBroker() {
-        if(!this.client) return;
-        this.logger.log('Disconnecting from MQTT broker...');
-        try{
-            this.client.end(true, () => this.logger.log('MQTT client disconnected'));
-        } catch(e) {
-            this.logger.error('Error while disconnecting MQTT client: ' + (e as Error).message);
-        } finally {
-            this.client = null;
-        }
+        if (!this.client) return;
+
+        this.logger.log('Disconnecting MQTT...');
+        this.client.end(true, () => this.logger.log('MQTT disconnected'));
+        this.client = null;
     }
 
-    publish(topic: string, message: string | object, options: IClientPublishOptions  = { qos: 0, retain: false}) {
-         if (!this.client || !this.client.connected) {
+    publish(topic: string, message: any, options: IClientPublishOptions = { qos: 0 }) {
+        if (!this.client || !this.client.connected) {
             this.logger.warn('MQTT not connected, cannot publish');
             return;
         }
+
         const payload = typeof message === 'string' ? message : JSON.stringify(message);
+
         this.client.publish(topic, payload, options, (err) => {
-            if (err) {
-                this.logger.error(`Publish error to ${topic}: ${err.message}`);
-            } else {
-                this.logger.log(`Published to ${topic}: ${payload}`);
-            }
+            if (err) this.logger.error(`Publish error: ${err.message}`);
         });
     }
+
+    @OnEvent('device.created')
+    handleDeviceCreatedEvent(payload: { deviceId: string }) {
+        const topic = `iot/${payload.deviceId}/sensors`;
+        if (!this.topics.includes(topic)) {
+            this.topics.push(topic);
+        }
+        if (this.client) {
+            this.client.subscribe(topic, { qos: 0 }, (err) => {
+                if (err) this.logger.error(`MQTT subscribe error: ${err.message}`);
+                else this.logger.log(`Subscribed new device topic: ${topic}`);
+            });
+        }
+    }
+
 }

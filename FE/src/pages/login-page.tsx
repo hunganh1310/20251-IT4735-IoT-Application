@@ -3,11 +3,17 @@ import { useState } from "react"
 import bg from "../assets/background.jpg";
 import { useNavigate } from "react-router-dom";
 import apiClient from "../api/axiosConfig";
+import InputAdornment from '@mui/material/InputAdornment';
+import IconButton from '@mui/material/IconButton';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import { toast } from "react-toastify";
 
 const LoginPage = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [remember, setRemember] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
 
     const handleLogin = async (e) => {
@@ -32,9 +38,10 @@ const LoginPage = () => {
                 sessionStorage.setItem('user', userString);
             }
             console.log(accessToken);
-
+            toast.success("Đăng ký thành công!");
             navigate('/dashboard');
         } catch (err) {
+            toast.error("Đăng nhập thất bại!");
             console.log("Error", err);
         }
     }
@@ -81,7 +88,7 @@ const LoginPage = () => {
                     />
                     <TextField
                         label="Mật khẩu"
-                        type="password"
+                        type={ showPassword ? "text" : "password" }
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         fullWidth
@@ -91,6 +98,18 @@ const LoginPage = () => {
                             "& .MuiOutlinedInput-root": {
                                 borderRadius: 2
                             }
+                        }}
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        edge="end"
+                                    >
+                                        {showPassword ? <Visibility /> : <VisibilityOff />}
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
                         }}
                     />
 
