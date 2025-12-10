@@ -126,4 +126,53 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
         }
     }
 
+    @OnEvent('device.updated')
+    handleDeviceUpdatedEvent(payload: { deviceId: string, newDeviceId: string }) {
+        const oldTopic = `iot/${payload.deviceId}/sensors`;
+        const newTopic = `iot/${payload.newDeviceId}/sensors`;
+        const oldTopicIndex = this.topics.indexOf(oldTopic);
+        if (oldTopicIndex > -1) {
+            this.topics.splice(oldTopicIndex, 1);
+        }
+
+        if (this.client) {
+            this.client.unsubscribe(oldTopic, (err) => {
+                if (err) {
+                    this.logger.error(`MQTT unsubscribe error for old topic ${oldTopic}: ${err.message}`);
+                } else {
+                    this.logger.log(`Unsubscribed old device topic: ${oldTopic}`);
+                }
+            });
+        }
+        if (!this.topics.includes(newTopic)) {
+            this.topics.push(newTopic);
+        }
+        if (this.client) {
+            this.client.subscribe(newTopic, { qos: 0 }, (err) => {
+                if (err) {
+                    this.logger.error(`MQTT subscribe error for new topic ${newTopic}: ${err.message}`);
+                } else {
+                    this.logger.log(`Subscribed new device topic: ${newTopic}`);
+                }
+            });
+        }
+    }
+
+    @OnEvent('device.deleted') 
+    handleDeviceDeletedEvent(payload: { deviceId: string }) {
+        const topic = `iot/${payload.deviceId}/sensors`;
+        const index = this.topics.indexOf(topic);
+        if (index > -1) {
+            this.topics.splice(index, 1);
+        }
+        if (this.client) {
+            this.client.unsubscribe(topic, (err) => {
+                if (err) {
+                    this.logger.error(`MQTT unsubscribe error for topic ${topic}: ${err.message}`);
+                } else {
+                    this.logger.log(`Unsubscribed deleted device topic: ${topic}`);
+                }
+            });
+        }
+    }
 }

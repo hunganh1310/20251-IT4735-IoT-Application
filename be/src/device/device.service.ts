@@ -4,6 +4,8 @@ import { InfluxService } from "src/influx/influx.service";
 import { MqttService } from "src/mqtt/mqtt.service";
 import { PrismaService } from "src/prisma/prisma.service";
 import { EventEmitter } from "stream";
+import { DeviceDto } from "./dto/device.dto";
+import { consoleLogger } from "@influxdata/influxdb-client";
 
 @Injectable()
 export class DeviceService {
@@ -13,8 +15,9 @@ export class DeviceService {
         private readonly eventEmitter: EventEmitter2,
     ) {}
 
-    getDeviceData(deviceId: string) {
-        return this.influxService.getLatestSensorData(deviceId);
+    async getDeviceData(deviceId: string, durationMinutes: number, aggregateSeconds: number) {
+        const rs = await this.influxService.getSensorHistory(deviceId, durationMinutes, aggregateSeconds);
+        return rs;
     }
 
     async createDevice(deviceId: string, accountId?: number, name: string = "My device") {
@@ -33,5 +36,37 @@ export class DeviceService {
     async getAllDeviceIds(): Promise<string[]> {
         const devices = await this.prismaService.device.findMany();
         return devices.map(device => device.deviceId);
+    }
+
+    async getAllDevice(): Promise<DeviceDto[]> {
+        const devices = await this.prismaService.device.findMany();
+        return devices;
+    }
+
+    async updateDevice(body: DeviceDto,id: number,deviceId: string): Promise<DeviceDto> {
+        const data: DeviceDto = await this.prismaService.device.update({
+            data: {
+                ...body
+            },
+            where: {
+                id: id
+            }
+        });
+        const newDeviceId = body.deviceId;
+        console.log(`DeviceId: ${deviceId} and Old deviceId: ${newDeviceId}`);
+        if(deviceId != newDeviceId){
+            this.eventEmitter.emit('device.updated', { deviceId, newDeviceId });
+        }
+        return data;
+    }
+
+    async deleteDevice(id: number, deviceId: string): Promise<DeviceDto> {
+        const data = await this.prismaService.device.delete({
+            where: {
+                id: id
+            }
+        });
+        this.eventEmitter.emit('device.deleted', { deviceId });
+        return data;
     }
 }

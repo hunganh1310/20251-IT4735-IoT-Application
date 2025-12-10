@@ -1,4 +1,4 @@
-import { IsNumber, IsString } from "class-validator";
+import { IsNumber, IsOptional, IsString } from "class-validator";
 
 export class DeviceDto {
     @IsString()
@@ -8,5 +8,6 @@ export class DeviceDto {
     name?: string;
 
     @IsNumber()
+    @IsOptional()
     accountId?: number | undefined;
 }
