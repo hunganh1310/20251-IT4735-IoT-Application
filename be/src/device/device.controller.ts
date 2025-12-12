@@ -1,6 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from "@nestjs/common";
 import { DeviceService } from "./device.service";
 import { DeviceDto } from "./dto/device.dto";
+import { LedDto } from "src/led/dto/led.dto";
+import { LedControlDto } from "src/led/dto/ledControl.dto";
 
 @Controller('devices')
 export class DeviceController {
@@ -17,6 +19,14 @@ export class DeviceController {
         return await this.deviceService.getDeviceData(deviceId,durationMinutes,aggregateSeconds);
     }
 
+    @Patch('/:device_id/control')
+    async controlLed(
+        @Body() body: LedControlDto,
+        @Param('device_id') device_id: string
+    ) {
+        return await this.deviceService.controlLed(body, device_id);
+    }
+
     @Get()
     async getAllDevice() {
         return await this.deviceService.getAllDevice();
@@ -24,7 +34,7 @@ export class DeviceController {
 
     @Post()
     async createDevice(@Body() body: DeviceDto) {
-        return await this.deviceService.createDevice(body.deviceId, body.accountId, body?.name);
+        return await this.deviceService.createDevice(body.deviceId, body.accountId, body?.name, body.nameLed);
     }
 
     @Put('/:id')
@@ -43,4 +53,6 @@ export class DeviceController {
     ) {
         return await this.deviceService.deleteDevice(id, deviceId);
     }
+
+
 }

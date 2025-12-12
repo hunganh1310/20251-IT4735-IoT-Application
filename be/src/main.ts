@@ -9,8 +9,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const config = new DocumentBuilder()
-    .setTitle("Project Home IOT API")
-    .setDescription("API documentation for Project III")
+    .setTitle("Aquarium IoT API")
+    .setDescription("API cho hệ thống IoT (ESP32, Node.js, React) Bao gồm xác thực, quản lý thiết bị và truy vấn dữ liệu lịch sử.")
     .setVersion("1.0")
     .addBearerAuth()
     .build();

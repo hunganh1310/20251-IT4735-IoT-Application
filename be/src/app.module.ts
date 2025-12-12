@@ -11,6 +11,7 @@ import { MqttModule } from './mqtt/mqtt.module';
 import { InfluxModule } from './influx/influx.module';
 import { DeviceModule } from './device/device.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { LedModule } from './led/led.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     MqttModule,
     InfluxModule,
     DeviceModule,
+    LedModule
   ], 
   controllers: [AppController],
   providers: [AppService, MqttService, WebsocketGateway],

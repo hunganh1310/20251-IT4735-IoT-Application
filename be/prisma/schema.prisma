@@ -36,6 +36,21 @@ model Device {
   createdAt DateTime  @default(now())
   accountId Int
   account   Account   @relation(fields: [accountId], references: [id])
+  led       Led?
+}
+
+model Led {
+  id          Int      @id @default(autoincrement())
+  name        String
+  createAt    DateTime @default(now())
+  led_mode    String   @default("basic")
+  brightness  Int      @default(0)
+  led_is_on   Boolean  @default(false)
+  presence_mode_enabled Boolean @default(false)
+  color       String   @default("#FF0000")
+
+  deviceId    Int      @unique
+  device      Device   @relation(fields: [deviceId], references: [id])
 }
 
 

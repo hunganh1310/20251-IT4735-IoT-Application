@@ -5,6 +5,7 @@ import { randomUUID } from "crypto";
 import { DeviceService } from "src/device/device.service";
 import { OnEvent } from "@nestjs/event-emitter";
 import { InfluxService } from "src/influx/influx.service";
+import { LedDto } from "src/led/dto/led.dto";
 
 @Injectable()
 export class MqttService implements OnModuleInit, OnModuleDestroy {
@@ -68,21 +69,56 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
 
         this.client.on('message', (topic, message) => {
             const raw = message.toString();
-            const deviceId = topic.split('/')[1]; 
+            const parts = topic.split('/'); // ["iot", "deviceId", "sensors" hoặc "led", "status"]
+
+            const deviceId = parts[1];
+            const category = parts[2]; // "sensors" hoặc "led"
+            const sub = parts[3];      // optional: "status"
+            
             let parsed: any;
             try {
                 parsed = JSON.parse(raw);
             } catch {
                 parsed = raw;
             }
-            // Validate payload
-            if (!parsed) return;
-            this.influxService.writeSensorData(deviceId,parsed.temperature,parsed.turbidity,parsed.water_quality,parsed.ph);
-            this.wsGateway.sendSensorData({
-                topic,
-                payload: parsed,
-                receivedAt: new Date().toISOString(),
-            });
+
+            //  Sensors topic xử lý riêng
+            if (category === "sensors") {
+                this.logger.log(` SENSOR DATA from ${deviceId}`);
+                this.influxService.writeSensorData(
+                    deviceId,
+                    parsed.temperature,
+                    parsed.turbidity,
+                    parsed.water_quality,
+                    parsed.ph
+                );
+
+                this.wsGateway.sendSensorData({
+                    type: "sensor_update",
+                    deviceId,
+                    payload: parsed,
+                    receivedAt: new Date().toISOString(),
+                });
+
+                return;
+            }
+
+            //  LED status topic xử lý riêng
+            if (category === "led" && sub === "status") {
+                this.logger.log(` LED STATUS from ${deviceId}`);
+                
+                this.wsGateway.sendSensorData({
+                    type: "led_status",
+                    deviceId,
+                    payload: parsed,
+                    receivedAt: new Date().toISOString(),
+                });
+
+                return;
+            }
+
+            //  Không thuộc loại nào
+            this.logger.warn(` Unknown topic: ${topic}`);
         });
 
         this.client.on('reconnect', () => this.logger.log('MQTT reconnecting...'));
@@ -115,6 +151,7 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     @OnEvent('device.created')
     handleDeviceCreatedEvent(payload: { deviceId: string }) {
         const topic = `iot/${payload.deviceId}/sensors`;
+        const topic_status_led = `iot/${payload.deviceId}/led/status`;
         if (!this.topics.includes(topic)) {
             this.topics.push(topic);
         }
@@ -122,6 +159,10 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
             this.client.subscribe(topic, { qos: 0 }, (err) => {
                 if (err) this.logger.error(`MQTT subscribe error: ${err.message}`);
                 else this.logger.log(`Subscribed new device topic: ${topic}`);
+            });
+            this.client.subscribe(topic_status_led, { qos: 1 }, (err) => {
+                if (err) this.logger.error(`MQTT subscribe error: ${err.message}`);
+                else this.logger.log(`Subscribed new device topic: ${topic_status_led}`);
             });
         }
     }
@@ -174,5 +215,11 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
                 }
             });
         }
+    }
+
+    @OnEvent('led.controled')
+    controlLed(payload: { deviceId: string, body: LedDto }) {
+        const topic = `iot/${payload.deviceId}/led/control`;
+        this.publish(topic, payload.body);
     }
 }
