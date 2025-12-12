@@ -18,14 +18,14 @@ export class AccountController {
     async createAccount(@Body() createAccountDto: CreateAccountDto) {
         return this.accountService.createAccount(createAccountDto);
     }
-    @Put(':id')
-    async updateAccount(@Param('id') id: number, @Body() updateAccountDto: CreateAccountDto) {
-        return this.accountService.updateAccount(Number(id), updateAccountDto);
-    }
+    // @Put(':id')
+    // async updateAccount(@Param('id') id: number, @Body() updateAccountDto: CreateAccountDto) {
+    //     return this.accountService.updateAccount(Number(id), updateAccountDto);
+    // }
 
-    @Delete(':id')
-    async deleteAccount(@Param('id') id: number) {
-        return this.accountService.deleteAccount(Number(id));
-    }
+    // @Delete(':id')
+    // async deleteAccount(@Param('id') id: number) {
+    //     return this.accountService.deleteAccount(Number(id));
+    // }
 
 }

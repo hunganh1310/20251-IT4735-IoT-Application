@@ -7,6 +7,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.setGlobalPrefix('api');
 
   const config = new DocumentBuilder()
     .setTitle("Aquarium IoT API")
@@ -18,7 +19,6 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup("api/docs", app, document);
 
-  // Global validation
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,        // Loại bỏ field không có trong DTO
@@ -26,15 +26,7 @@ async function bootstrap() {
       transform: true,        // Tự động transform type (ví dụ string -> number)
     }),
   );
-
   app.useGlobalInterceptors(new TransformInterceptor());
-
-  // const microservice = app.connectMicroservice<MicroserviceOptions>({
-  //   transport: Transport.MQTT,
-  //   options: {
-  //     url: 'http://localhost:1883',
-  //   }
-  // })
 
   app.enableCors({
     origin: 'http://localhost:5173',
@@ -42,7 +34,6 @@ async function bootstrap() {
     allowedHeaders: 'Content-Type, Accept, Authorization',
   })
 
-  await app.startAllMicroservices();
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

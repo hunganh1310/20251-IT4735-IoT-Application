@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InfluxService } from "src/influx/influx.service";
 import { MqttService } from "src/mqtt/mqtt.service";
@@ -38,6 +38,9 @@ export class DeviceService {
             color: "#FF0000"
         };
         const led = this.ledService.createLed(ledBody);
+        if(!led) {
+            throw new BadRequestException("Invalid input");
+        }
         await this.influxService.writeSensorData(deviceId);
         this.eventEmitter.emit('device.created', { deviceId });
         return device;
@@ -53,32 +56,52 @@ export class DeviceService {
         return devices;
     }
 
-    async updateDevice(body: DeviceDto,id: number,deviceId: string): Promise<DeviceDto> {
-        const data: DeviceDto = await this.prismaService.device.update({
-            data: {
-                ...body
-            },
-            where: {
-                id: id
-            }
-        });
-        const newDeviceId = body.deviceId;
-        console.log(`DeviceId: ${deviceId} and Old deviceId: ${newDeviceId}`);
-        if(deviceId != newDeviceId){
-            this.eventEmitter.emit('device.updated', { deviceId, newDeviceId });
+    async updateDevice(body: DeviceDto, id: number) {
+        const oldDevice = await this.prismaService.device.findUnique({ where: { id } });
+        if(!oldDevice) {
+            throw new NotFoundException("Device not found");
         }
-        return data;
+        const updated = await this.prismaService.device.update({
+            data: { ...body },
+            where: { id }
+        });
+
+        if (oldDevice.deviceId !== body.deviceId) {
+            this.eventEmitter.emit('device.updated', {
+                oldDeviceId: oldDevice.deviceId,
+                newDeviceId: body.deviceId
+            });
+        }
+        return updated;
     }
 
-    async deleteDevice(id: number, deviceId: string): Promise<DeviceDto> {
-        const data = await this.prismaService.device.delete({
-            where: {
-                id: id
-            }
+
+    async deleteDevice(id: number): Promise<DeviceDto> {
+        const device = await this.prismaService.device.findUnique({
+            where: { id },
         });
-        this.eventEmitter.emit('device.deleted', { deviceId });
-        return data;
+        if (!device) {
+            throw new NotFoundException("Device not found");
+        }
+        const led = await this.prismaService.led.findUnique({
+            where: { deviceId: device.id }
+        })
+        if (!led) {
+            throw new NotFoundException("Led not found");
+        }
+        const ledDeleted = await this.prismaService.led.delete({
+            where: { deviceId: device.id }
+        })
+        const deleted = await this.prismaService.device.delete({
+            where: { id },
+        });
+        this.eventEmitter.emit('device.deleted', {
+            deviceId: device.deviceId,
+        });
+
+        return deleted;
     }
+
 
     async controlLed(body: LedControlDto, device_id: string) {
         this.eventEmitter.emit('led.controled', { device_id, body });

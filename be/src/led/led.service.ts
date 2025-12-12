@@ -15,4 +15,25 @@ export class LedService {
             }
         });
     }
+
+    async getAllLed(): Promise<LedDto[]> {
+        return await this.prisma.led.findMany();
+    }
+
+    async updateLed(body: LedDto, id: number) {
+        return await this.prisma.led.update({
+            where: {
+                id: id,
+            },
+            data: {
+                ...body
+            }
+        });
+    }
+
+    async deleteLed(id: number) {
+        return this.prisma.led.delete({
+            where: { id: id }
+        });
+    }
 }
