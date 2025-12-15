@@ -141,7 +141,7 @@ float TurbiditySensor::readNTU() {
   float voltage = readStableVoltage();
   float ntu = voltageToNTU(voltage);
 
-  long r = random(300, 601);
+  long r = random(300, 320);
   ntu = r / 10.0f;
   return ntu;
 }
