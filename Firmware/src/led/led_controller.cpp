@@ -313,41 +313,39 @@ void LEDController::rainEffect() {
     static int lightningBrightness = 0;
     static int lightningPosition = 0;
     
-    // Base stormy sky
+    // Base stormy sky - gray and slightly brighter
     for(int i = 0; i < NUM_LEDS; i++) {
-        leds[i] = CRGB(5, 8, 15);
-        leds[i].r += random(-2, 3);
-        leds[i].g += random(-2, 3);
-        leds[i].b += random(-3, 5);
+        leds[i] = CRGB(6, 6, 6);
+        leds[i].r += random(-1, 2);
+        leds[i].g += random(-1, 2);
+        leds[i].b += random(-1, 2);
     }
     
     // Random raindrops
     if(random(100) < 30) {
         int pos = random(NUM_LEDS);
-        leds[pos] = CRGB(2, 5, 10);
+        leds[pos] = CRGB(2, 2, 3);
     }
     
-    // Lightning
+    // Lightning - 3 continuous LEDs at random position
     unsigned long now = millis();
     if(!lightningActive && (now - lastLightning > random(3000, 8000))) {
         lightningActive = true;
-        lightningBrightness = 255;
-        lightningPosition = random(NUM_LEDS / 3, NUM_LEDS * 2 / 3);
+        lightningBrightness = 180;
+        lightningPosition = random(30, 58);
         lastLightning = now;
     }
     
     if(lightningActive) {
-        int spread = 15;
-        for(int i = max(0, lightningPosition - spread);
-            i < min(NUM_LEDS, lightningPosition + spread); i++) {
-        int distance = abs(i - lightningPosition);
-        int brightness = lightningBrightness * (spread - distance) / spread;
-        leds[i] += CRGB(brightness, brightness, brightness + 20);
+        // Light up 3 continuous LEDs
+        for(int i = 0; i < 3; i++) {
+            int ledIndex = (lightningPosition + i) % NUM_LEDS;
+            leds[ledIndex] = CRGB(lightningBrightness, lightningBrightness, lightningBrightness + 20);
         }
         
-        lightningBrightness -= 30;
+        lightningBrightness -= 5;
         if(lightningBrightness <= 0) {
-        lightningActive = false;
+            lightningActive = false;
         }
     }
 }
