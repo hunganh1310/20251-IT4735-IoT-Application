@@ -1,8 +1,3 @@
-/**
- * @file ds18b20_sensor.h
- * @brief DS18B20 temperature sensor interface
- */
-
 #ifndef DS18B20_SENSOR_H
 #define DS18B20_SENSOR_H
 
