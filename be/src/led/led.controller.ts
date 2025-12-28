@@ -2,25 +2,29 @@ import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from "@nes
 import { LedDto } from "./dto/led.dto";
 import { LedService } from "./led.service";
 import { AuthGuard } from "@nestjs/passport";
+import { ApiBearerAuth } from "@nestjs/swagger";
 
 @Controller('/leds')
 export class LedController {
     constructor(
         private readonly ledService: LedService,
     ) {}
-    //@UseGuards(AuthGuard('jwt'))
     @Post()
+    @ApiBearerAuth()
+    @UseGuards(AuthGuard('jwt'))
     async createLed(@Body()body: LedDto): Promise<LedDto> {
         return this.ledService.createLed(body);
     }
 
-    //@UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth()
+    @UseGuards(AuthGuard('jwt'))
     @Get()
     async getAllLed(): Promise<LedDto[]> {
         return await this.ledService.getAllLed();
     }
 
-    //@UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth()
+    @UseGuards(AuthGuard('jwt'))
     @Put('/:id')
     async updateLed(
         @Body() body: LedDto,
@@ -29,7 +33,8 @@ export class LedController {
         return await this.ledService.updateLed(body,id);
     }
     
-    //@UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth()
+    @UseGuards(AuthGuard('jwt'))
     @Delete('/:id')
     async deleteLed(
         @Param() id: number

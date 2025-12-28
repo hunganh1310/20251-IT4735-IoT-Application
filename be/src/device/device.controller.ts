@@ -12,8 +12,9 @@ export class DeviceController {
         private readonly deviceService: DeviceService
     ) {}
 
-    //@UseGuards(AuthGuard('jwt'))
     @Get('/:device_id/data')
+    @ApiBearerAuth()
+    @UseGuards(AuthGuard('jwt'))
     async getDeviceData(
         @Param('device_id') deviceId: string,
         @Query('durationMinutes') durationMinutes: number,
@@ -22,8 +23,9 @@ export class DeviceController {
         return await this.deviceService.getDeviceData(deviceId,durationMinutes,aggregateSeconds);
     }
 
-    //@UseGuards(AuthGuard('jwt'))
     @Patch('/:device_id/control')
+    @ApiBearerAuth()
+    @UseGuards(AuthGuard('jwt'))
     async controlLed(
         @Body() body: LedControlDto,
         @Param('device_id') device_id: string
@@ -31,21 +33,23 @@ export class DeviceController {
         return await this.deviceService.controlLed(body, device_id);
     }
 
-    //@UseGuards(AuthGuard('jwt'))
-    //@ApiBearerAuth()
     @Get()
+    @ApiBearerAuth()
+    @UseGuards(AuthGuard('jwt'))
     async getAllDevice() {
         return await this.deviceService.getAllDevice();
     }
 
-    //@UseGuards(AuthGuard('jwt'))
     @Post()
+    @ApiBearerAuth()
+    @UseGuards(AuthGuard('jwt'))
     async createDevice(@Body() body: DeviceDto) {
         return await this.deviceService.createDevice(body.deviceId, body.accountId, body?.name, body.nameLed);
     }
 
-    //@UseGuards(AuthGuard('jwt'))
     @Put('/:id')
+    @ApiBearerAuth()
+    @UseGuards(AuthGuard('jwt'))
     async updateDevice(
         @Body() body: DeviceDto, 
         @Param('id') id: number,
@@ -53,9 +57,9 @@ export class DeviceController {
         return await this.deviceService.updateDevice(body,id);
     }
 
-    //@UseGuards(AuthGuard('jwt'))
     @Delete('/:id')
-    //@ApiBearerAuth()
+    @ApiBearerAuth()
+    @UseGuards(AuthGuard('jwt'))
     async deleteDevice(
         @Param('id') id: number,
     ) {
