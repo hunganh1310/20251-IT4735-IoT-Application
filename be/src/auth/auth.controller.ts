@@ -25,8 +25,6 @@ export class AuthController {
 
     @ApiResponse({status: 200, description: 'Sucessful register'})
     @ApiBody({type: CreateAccountDto})
-    @ApiBearerAuth()
-    @UseGuards(AuthGuard('jwt'))
     @Post('register')
     async register(@Body() body: CreateAccountDto) {
         return this.accountService.createAccount(body);

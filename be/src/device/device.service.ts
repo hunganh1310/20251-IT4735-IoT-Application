@@ -37,7 +37,7 @@ export class DeviceService {
             deviceId: device.id,
             color: "#FF0000"
         };
-        const led = this.ledService.createLed(ledBody);
+        const led = await this.ledService.createLed(ledBody);
         if(!led) {
             throw new BadRequestException("Invalid input");
         }
@@ -52,19 +52,33 @@ export class DeviceService {
     }
 
     async getAllDevice(): Promise<DeviceDto[]> {
-        const devices = await this.prismaService.device.findMany();
-        return devices;
+        const devices = await this.prismaService.device.findMany({
+            include: {
+                led: true
+            }
+        });
+        return devices as any;
     }
 
     async updateDevice(body: DeviceDto, id: number) {
-        const oldDevice = await this.prismaService.device.findUnique({ where: { id } });
+        const oldDevice = await this.prismaService.device.findUnique({ where: { id: Number(id) } });
         if(!oldDevice) {
             throw new NotFoundException("Device not found");
         }
+
+        const { nameLed, ...deviceData } = body;
+
         const updated = await this.prismaService.device.update({
-            data: { ...body },
-            where: { id }
+            data: { ...deviceData },
+            where: { id: Number(id) }
         });
+
+        if (nameLed) {
+            await this.prismaService.led.update({
+                where: { deviceId: Number(id) },
+                data: { name: nameLed }
+            });
+        }
 
         if (oldDevice.deviceId !== body.deviceId) {
             this.eventEmitter.emit('device.updated', {
@@ -78,7 +92,7 @@ export class DeviceService {
 
     async deleteDevice(id: number): Promise<DeviceDto> {
         const device = await this.prismaService.device.findUnique({
-            where: { id },
+            where: { id: Number(id) },
         });
         if (!device) {
             throw new NotFoundException("Device not found");
@@ -93,7 +107,7 @@ export class DeviceService {
             where: { deviceId: device.id }
         })
         const deleted = await this.prismaService.device.delete({
-            where: { id },
+            where: { id: Number(id) },
         });
         this.eventEmitter.emit('device.deleted', {
             deviceId: device.deviceId,

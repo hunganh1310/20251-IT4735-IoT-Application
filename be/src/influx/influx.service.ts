@@ -13,10 +13,10 @@ export class InfluxService {
   private influx: InfluxDB;
   private writeApi;
 
-  private readonly url = 'http://localhost:8086';
-  private readonly token = 'fGcdc1RtkIQNLWi22-kAxrVkaS5x6c5TikboVeLFE7R9aVuyz8_s_o6jYgfD2Cxp1Wgb5faJr7L1EhX20bx40Q==';
-  private readonly org = 'iot-org';
-  private readonly bucket = 'iot-sensor';
+  private readonly url = process.env.INFLUX_URL || 'http://localhost:5086';
+  private readonly token = process.env.INFLUX_TOKEN || 'my-super-token';
+  private readonly org = process.env.INFLUX_ORG || 'my-org';
+  private readonly bucket = process.env.INFLUX_BUCKET || 'my-bucket';
 
   constructor() {
     this.influx = new InfluxDB({ url: this.url, token: this.token });

@@ -499,3 +499,10 @@ A: Subscribe topic `iot/device01/status`, khi device kết nối sẽ publish `{
 
 **Version**: 1.0.0  
 **Last Updated**: December 2025
+1. cd vào fe
+  npm install + npm run dev
+2. cd vào be
+  docker compose up -d
+  npm install
+  npx prisma migrate dev --name init
+  npm run start:dev

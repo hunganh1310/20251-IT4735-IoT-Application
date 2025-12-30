@@ -28,7 +28,7 @@ export class LedController {
     @Put('/:id')
     async updateLed(
         @Body() body: LedDto,
-        @Param() id: number
+        @Param('id') id: number
     ) {
         return await this.ledService.updateLed(body,id);
     }
@@ -37,7 +37,7 @@ export class LedController {
     @UseGuards(AuthGuard('jwt'))
     @Delete('/:id')
     async deleteLed(
-        @Param() id: number
+        @Param('id') id: number
     ) {
         return await this.ledService.deleteLed(id);
     }

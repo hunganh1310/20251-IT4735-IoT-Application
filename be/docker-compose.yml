@@ -6,10 +6,39 @@ services:
     container_name: timescaledb
     restart: always
     ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dat11102004
+      POSTGRES_DB: IotProject
+    volumes:
+      - ./data/timescaledb:/var/lib/postgresql/data
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: always
+    ports:
       - "5432:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: dat11102004
-      POSTGRES_DB: projectIII
+      POSTGRES_DB: IotProject
     volumes:
-      - ./data:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    restart: always
+    ports:
+      - "5086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: admin123
+      DOCKER_INFLUXDB_INIT_ORG: my-org
+      DOCKER_INFLUXDB_INIT_BUCKET: my-bucket
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: my-super-token
+    volumes:
+      - ./data/influxdb:/var/lib/influxdb2
