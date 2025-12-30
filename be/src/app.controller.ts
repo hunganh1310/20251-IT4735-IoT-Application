@@ -10,9 +10,4 @@ export class AppController {
   getHello(): string {
     return this.appService.getHello();
   }
-
-  // @MessagePattern('test/hello')
-  // handleMessage(@Payload() message: any) {
-  //   console.log("Received message: ",message);
-  // }
 }
