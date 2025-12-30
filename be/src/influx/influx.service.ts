@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { flux, InfluxDB, Point } from '@influxdata/influxdb-client';
+import { ConfigService } from '@nestjs/config';
 
 interface InfluxRow {
   _time: string;
@@ -13,14 +14,31 @@ export class InfluxService {
   private influx: InfluxDB;
   private writeApi;
 
-  private readonly url = process.env.INFLUX_URL || 'http://localhost:5086';
-  private readonly token = process.env.INFLUX_TOKEN || 'my-super-token';
-  private readonly org = process.env.INFLUX_ORG || 'my-org';
-  private readonly bucket = process.env.INFLUX_BUCKET || 'my-bucket';
+  private readonly url: string | undefined;
+  private readonly token: string | undefined;
+  private readonly org: string | undefined;
+  private readonly bucket: string | undefined;
 
-  constructor() {
-    this.influx = new InfluxDB({ url: this.url, token: this.token });
-    this.writeApi = this.influx.getWriteApi(this.org, this.bucket, 'ns');
+  constructor(private readonly configService: ConfigService) {
+    this.url = this.configService.get<string>('INFLUX_URL');
+    this.token = this.configService.get<string>('TOKEN');
+    this.org = this.configService.get<string>('ORG');
+    this.bucket = this.configService.get<string>('BUCKET');
+    console.log("Influx Config:", {
+      url: this.url,
+      org: this.org,
+      bucket: this.bucket,
+    });
+    this.influx = new InfluxDB({
+      url: this.url as string,
+      token: this.token,
+    });
+
+    this.writeApi = this.influx.getWriteApi(
+      this.org as string,
+      this.bucket as string,
+      'ns',
+    );
   }
 
   async writeSensorData(deviceId: string, temperature: number = 0, turbidity: number = 0, water_quality: string = '', ph: number = 0) {
@@ -52,7 +70,7 @@ export class InfluxService {
         |> yield()
     `;
 
-    const queryApi = this.influx.getQueryApi(this.org);
+    const queryApi = this.influx.getQueryApi(this.org as string);
     const rows = await queryApi.collectRows(fluxQuery);
     console.log(`Rows: ${JSON.stringify(rows)}`);
 

@@ -23,7 +23,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
   //ham nay duoc goi khi mqtt.service co du lieu moi
   sendSensorData(data: any) {
-    console.log('Gửi dữ liệu tới FE:', data);
+    //console.log('Gửi dữ liệu tới FE:', data);
     this.server.emit('sensor_data', data);
   }
 }

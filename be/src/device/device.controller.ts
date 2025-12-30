@@ -30,6 +30,7 @@ export class DeviceController {
         @Body() body: LedControlDto,
         @Param('device_id') device_id: string
     ) {
+        console.log("Control LED for Device ID:", device_id, "with data:", body);
         return await this.deviceService.controlLed(body, device_id);
     }
 

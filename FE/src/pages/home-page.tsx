@@ -205,6 +205,8 @@ const HomePage = () => {
         setOpen(true);
     };
 
+    //console.log(`Selected device: ${JSON.stringify(selectedDevice)}`);
+
     const handleLedOpen = (device: any) => {
         setSelectedDevice(device);
         if (device.led) {
@@ -283,7 +285,15 @@ const HomePage = () => {
         
         setLoading(true);
         try {
-            await ledApi.updateLed(selectedDevice.led.id, ledData);
+            const payload = {
+                led_mode: ledData.led_mode,
+                brightness: ledData.brightness,
+                led_is_on: ledData.led_is_on,
+                presence_mode_enabled: ledData.presence_mode_enabled,
+                color: ledData.color
+            };
+            console.log(`ledData to submit: ${JSON.stringify(payload)}`);
+            await deviceApi.controlDevice(selectedDevice.deviceId, payload);
             toast.success("LED settings updated! 💡");
             handleLedClose();
             fetchDevices();

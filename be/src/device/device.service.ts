@@ -119,6 +119,7 @@ export class DeviceService {
 
     async controlLed(body: LedControlDto, device_id: string) {
         this.eventEmitter.emit('led.controled', { device_id, body });
+        console.log("Emitted led.controled event for device:", device_id, "with body:", body);
         const device = await this.prismaService.device.findUnique({
             where: { deviceId: device_id },
         });
