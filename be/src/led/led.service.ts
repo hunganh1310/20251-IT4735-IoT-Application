@@ -21,19 +21,20 @@ export class LedService {
     }
 
     async updateLed(body: LedDto, id: number) {
+        const { deviceId, ...updateData } = body;
         return await this.prisma.led.update({
             where: {
-                id: id,
+                id: Number(id),
             },
             data: {
-                ...body
+                ...updateData
             }
         });
     }
 
     async deleteLed(id: number) {
         return this.prisma.led.delete({
-            where: { id: id }
+            where: { id: Number(id) }
         });
     }
 }
