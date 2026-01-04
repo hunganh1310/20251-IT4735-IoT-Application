@@ -47,6 +47,7 @@ import TuneIcon from "@mui/icons-material/Tune";
 import { deviceApi } from "../api/deviceApi";
 import { ledApi } from "../api/ledApi";
 import { toast } from "react-toastify";
+import DeviceDashboardModal from "../components/DeviceDashboardModal";
 
 const modeLabels: Record<string, string> = {
     basic: "Static Color",
@@ -152,6 +153,8 @@ const HomePage = () => {
     const [fetching, setFetching] = useState(true);
     const [editId, setEditId] = useState<number | null>(null);
     const [selectedDevice, setSelectedDevice] = useState<any>(null);
+    const [dashboardOpen, setDashboardOpen] = useState(false);
+    const [dashboardDevice, setDashboardDevice] = useState<any>(null);
     
     const [formData, setFormData] = useState({
         deviceId: "",
@@ -184,6 +187,16 @@ const HomePage = () => {
         } finally {
             setFetching(false);
         }
+    };
+
+    const handleOpenDashboard = (device: any) => {
+        setDashboardDevice(device);
+        setDashboardOpen(true);
+    };
+
+    const handleCloseDashboard = () => {
+        setDashboardOpen(false);
+        setDashboardDevice(null);
     };
 
     useEffect(() => {
@@ -596,7 +609,7 @@ const HomePage = () => {
                                         <Button 
                                             variant={device.led?.led_is_on ? "contained" : "outlined"}
                                             size="small"
-                                            onClick={(e) => { e.stopPropagation(); toast.info("Dashboard feature coming soon! 📊"); }}
+                                            onClick={(e) => { e.stopPropagation(); handleOpenDashboard(device); }}
                                             sx={{ 
                                                 borderRadius: "10px", 
                                                 px: 2, 
@@ -952,6 +965,15 @@ const HomePage = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+            {/* Dashboard Modal */}
+            {dashboardDevice && (
+                <DeviceDashboardModal 
+                    open={dashboardOpen}
+                    onClose={handleCloseDashboard}
+                    deviceId={dashboardDevice.deviceId}
+                    deviceName={dashboardDevice.name || dashboardDevice.deviceId}
+                />
+            )}
         </Box>
     );
 };
