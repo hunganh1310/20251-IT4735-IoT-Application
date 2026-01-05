@@ -30,6 +30,7 @@ export class LedController {
         @Body() body: LedDto,
         @Param('id') id: number
     ) {
+        console.log("Updating LED ID:", id, "with data:", body);
         return await this.ledService.updateLed(body,id);
     }
     

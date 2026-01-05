@@ -47,6 +47,7 @@ import TuneIcon from "@mui/icons-material/Tune";
 import { deviceApi } from "../api/deviceApi";
 import { ledApi } from "../api/ledApi";
 import { toast } from "react-toastify";
+import DeviceDashboardModal from "../components/DeviceDashboardModal";
 
 const modeLabels: Record<string, string> = {
     basic: "Static Color",
@@ -152,6 +153,8 @@ const HomePage = () => {
     const [fetching, setFetching] = useState(true);
     const [editId, setEditId] = useState<number | null>(null);
     const [selectedDevice, setSelectedDevice] = useState<any>(null);
+    const [dashboardOpen, setDashboardOpen] = useState(false);
+    const [dashboardDevice, setDashboardDevice] = useState<any>(null);
     
     const [formData, setFormData] = useState({
         deviceId: "",
@@ -186,6 +189,16 @@ const HomePage = () => {
         }
     };
 
+    const handleOpenDashboard = (device: any) => {
+        setDashboardDevice(device);
+        setDashboardOpen(true);
+    };
+
+    const handleCloseDashboard = () => {
+        setDashboardOpen(false);
+        setDashboardDevice(null);
+    };
+
     useEffect(() => {
         fetchDevices();
     }, []);
@@ -204,6 +217,8 @@ const HomePage = () => {
         }
         setOpen(true);
     };
+
+    //console.log(`Selected device: ${JSON.stringify(selectedDevice)}`);
 
     const handleLedOpen = (device: any) => {
         setSelectedDevice(device);
@@ -283,7 +298,15 @@ const HomePage = () => {
         
         setLoading(true);
         try {
-            await ledApi.updateLed(selectedDevice.led.id, ledData);
+            const payload = {
+                led_mode: ledData.led_mode,
+                brightness: ledData.brightness,
+                led_is_on: ledData.led_is_on,
+                presence_mode_enabled: ledData.presence_mode_enabled,
+                color: ledData.color
+            };
+            console.log(`ledData to submit: ${JSON.stringify(payload)}`);
+            await deviceApi.controlDevice(selectedDevice.deviceId, payload);
             toast.success("LED settings updated! 💡");
             handleLedClose();
             fetchDevices();
@@ -586,7 +609,7 @@ const HomePage = () => {
                                         <Button 
                                             variant={device.led?.led_is_on ? "contained" : "outlined"}
                                             size="small"
-                                            onClick={(e) => { e.stopPropagation(); toast.info("Dashboard feature coming soon! 📊"); }}
+                                            onClick={(e) => { e.stopPropagation(); handleOpenDashboard(device); }}
                                             sx={{ 
                                                 borderRadius: "10px", 
                                                 px: 2, 
@@ -942,6 +965,15 @@ const HomePage = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+            {/* Dashboard Modal */}
+            {dashboardDevice && (
+                <DeviceDashboardModal 
+                    open={dashboardOpen}
+                    onClose={handleCloseDashboard}
+                    deviceId={dashboardDevice.deviceId}
+                    deviceName={dashboardDevice.name || dashboardDevice.deviceId}
+                />
+            )}
         </Box>
     );
 };

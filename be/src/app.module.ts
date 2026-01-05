@@ -12,6 +12,7 @@ import { InfluxModule } from './influx/influx.module';
 import { DeviceModule } from './device/device.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { LedModule } from './led/led.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -23,7 +24,10 @@ import { LedModule } from './led/led.module';
     MqttModule,
     InfluxModule,
     DeviceModule,
-    LedModule
+    LedModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+    })
   ], 
   controllers: [AppController],
   providers: [AppService, MqttService, WebsocketGateway],

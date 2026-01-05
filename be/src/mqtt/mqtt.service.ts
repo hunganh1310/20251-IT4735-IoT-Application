@@ -6,6 +6,7 @@ import { DeviceService } from "src/device/device.service";
 import { OnEvent } from "@nestjs/event-emitter";
 import { InfluxService } from "src/influx/influx.service";
 import { LedDto } from "src/led/dto/led.dto";
+import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class MqttService implements OnModuleInit, OnModuleDestroy {
@@ -18,7 +19,8 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     constructor(
         private readonly wsGateway: WebsocketGateway,
         private readonly deviceService: DeviceService,
-        private readonly influxService: InfluxService
+        private readonly influxService: InfluxService,
+        private readonly configureService: ConfigService
     ) {}
 
     private readonly uniqueIdPart = randomUUID().substring(0, 8);
@@ -36,22 +38,28 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     }
 
     connectBroker() {
-        const url = "mqtts://990608f05d9049929317380e48de94d5.s1.eu.hivemq.cloud:8883";
-
+        const url = this.configureService.get<string>('MQTT_URL');
+        const username = this.configureService.get<string>('MQTT_USERNAME');
+        const password = this.configureService.get<string>('MQTT_PASSWORD');
+        console.log("MQTT Config:", {
+            url: url,
+            username: username,
+            password: password,
+        });
         const options: IClientOptions = {
             clientId: `mqttx_test_01_${this.uniqueIdPart}`,
             clean: true,
             reconnectPeriod: 5000,
             connectTimeout: 30000,
             keepalive: 10,
-            username: "mqtt1",
-            password: "Mqtt123456",
+            username: username,
+            password: password,
             rejectUnauthorized: false, 
         };
 
         this.logger.log(`Connecting to MQTT broker ${url} ...`);
 
-        this.client = connect(url, options);
+        this.client = connect(url as string, options);
 
         this.client.on('connect', () => {
             this.logger.log(`MQTT connected (clientId=${options.clientId})`);
@@ -218,8 +226,9 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     }
 
     @OnEvent('led.controled')
-    controlLed(payload: { deviceId: string, body: LedDto }) {
-        const topic = `iot/${payload.deviceId}/led/control`;
+    controlLed(payload: { device_id: string, body: LedDto }) {
+        const topic = `iot/${payload.device_id}/led/control`;
+        console.log("Publishing to topic:", topic, "with payload:", payload.body);
         this.publish(topic, payload.body);
     }
 }
