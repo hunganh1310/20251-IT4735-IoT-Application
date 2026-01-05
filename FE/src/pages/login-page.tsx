@@ -38,7 +38,7 @@ const LoginPage = () => {
                 sessionStorage.setItem('user', userString);
             }
             console.log(accessToken);
-            toast.success("Đăng ký thành công!");
+            toast.success("Đăng nhập thành công!");
             navigate('/dashboard');
         } catch (err) {
             toast.error("Đăng nhập thất bại!");
