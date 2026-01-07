@@ -39,7 +39,7 @@ const LoginPage = () => {
             }
             console.log(accessToken);
             toast.success("Đăng nhập thành công!");
-            navigate('/dashboard');
+            navigate('/dashboard/home');
         } catch (err) {
             toast.error("Đăng nhập thất bại!");
             console.log("Error", err);
