@@ -401,24 +401,32 @@ void handleLEDControl(JsonDocument &doc) {
   }
 
   // Handle led_is_on (manual LED on/off)
+  // If led_is_on is false, turn off LED and skip other settings
   if (doc.containsKey("led_is_on")) {
     bool ledIsOn = doc["led_is_on"].as<bool>();
 
     if (!radarAutoMode) {
       // Only apply manual control if not in presence mode
-      if (ledIsOn) {
+      if (!ledIsOn) {
+        // Turn OFF - skip all other LED settings
+        ledController.setMode(MODE_OFF);
+        Serial.println("[Control] LED manually turned OFF - ignoring other settings");
+        publishLEDStatus();
+        publishRadarStatus();
+        return; // Exit early to skip mode/brightness/color settings
+      } else {
+        // Turn ON - continue to process mode/brightness/color
         if (ledController.getMode() == MODE_OFF) {
           ledController.setMode(MODE_BASIC);
         }
-      } else {
-        ledController.setMode(MODE_OFF);
+        Serial.println("[Control] LED manually turned ON");
       }
-      Serial.println("[Control] LED manually turned " + String(ledIsOn ? "ON" : "OFF"));
     }
   }
 
   // Handle led_mode change
-  if (doc.containsKey("led_mode")) {
+  bool modeSpecified = doc.containsKey("led_mode");
+  if (modeSpecified) {
     String mode = doc["led_mode"].as<String>();
 
     if (mode == "off") {
@@ -431,7 +439,7 @@ void handleLEDControl(JsonDocument &doc) {
       ledController.setMode(MODE_METEOR);
     } else if (mode == "apocalypse") {
       ledController.setMode(MODE_APOCALYPSE);
-    } else if (mode == "basic") {
+    } else if (mode == "basic" || mode == "static") {
       ledController.setMode(MODE_BASIC);
     }
 
@@ -447,21 +455,27 @@ void handleLEDControl(JsonDocument &doc) {
   }
 
   // Handle color change (hex format like #FF00AA)
+  // Only apply color if mode is "basic"/"static" or no mode was specified
   if (doc.containsKey("color")) {
     const char *hexColor = doc["color"];
     uint8_t r, g, b;
     parseHexColor(hexColor, r, g, b);
 
-    ledController.setCustomColor(r, g, b);
-    Serial.print("[Control] Color changed to ");
-    Serial.print(hexColor);
-    Serial.print(" -> RGB(");
-    Serial.print(r);
-    Serial.print(",");
-    Serial.print(g);
-    Serial.print(",");
-    Serial.print(b);
-    Serial.println(")");
+    // Only set custom color if no mode was specified, or if mode is basic/static
+    if (!modeSpecified || ledController.getMode() == MODE_BASIC) {
+      ledController.setCustomColor(r, g, b);
+      Serial.print("[Control] Color changed to ");
+      Serial.print(hexColor);
+      Serial.print(" -> RGB(");
+      Serial.print(r);
+      Serial.print(",");
+      Serial.print(g);
+      Serial.print(",");
+      Serial.print(b);
+      Serial.println(")");
+    } else {
+      Serial.println("[Control] Color ignored - mode is not 'basic' or 'static'");
+    }
   }
 
   // Publish updated status
