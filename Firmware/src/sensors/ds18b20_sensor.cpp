@@ -14,14 +14,11 @@ DS18B20Sensor::DS18B20Sensor(uint8_t pin) {
 }
 
 bool DS18B20Sensor::init() {
-    // Initialize OneWire
     oneWire = new OneWire(sensorPin);
     sensors = new DallasTemperature(oneWire);
     
-    // Start the DallasTemperature library
     sensors->begin();
     
-    // Check if any devices are connected
     int deviceCount = sensors->getDeviceCount();
     
     if (deviceCount == 0) {
@@ -32,7 +29,6 @@ bool DS18B20Sensor::init() {
     Serial.println("[DS18B20] Sensor initialized on pin " + String(sensorPin));
     Serial.println("[DS18B20] Found " + String(deviceCount) + " device(s)");
     
-    // Set resolution to 12-bit (0.0625°C precision)
     sensors->setResolution(12);
     
     initialized = true;
@@ -42,19 +38,16 @@ bool DS18B20Sensor::init() {
 float DS18B20Sensor::readTemperature() {
     if (!initialized) {
         Serial.println("[DS18B20] ERROR: Sensor not initialized");
-        return -127.0;  // Error value
+        return -127.0;
     }
     
-    // Request temperature reading
     sensors->requestTemperatures();
     
-    // Read temperature from first device (index 0)
     float temperature = sensors->getTempCByIndex(0);
     
-    // Check for valid reading
     if (temperature == DEVICE_DISCONNECTED_C) {
         Serial.println("[DS18B20] ERROR: Device disconnected");
-        return lastTemperature;  // Return last known good value
+        return lastTemperature;
     }
     
     lastTemperature = temperature;
@@ -93,6 +86,5 @@ bool DS18B20Sensor::isConversionComplete() {
         return false;
     }
     
-    // Check if conversion is complete (takes ~750ms for 12-bit resolution)
     return sensors->isConversionComplete();
 }

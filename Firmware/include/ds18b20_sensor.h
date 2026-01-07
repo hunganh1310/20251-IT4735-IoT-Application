@@ -12,22 +12,16 @@
 
 class DS18B20Sensor {
 public:
-    // Constructor
     DS18B20Sensor(uint8_t pin);
     
-    // Initialization
     bool init();
     
-    // Read sensor data
-    float readTemperature();           // Read temperature in Celsius
-    float readTemperatureFahrenheit(); // Read temperature in Fahrenheit
-    bool isConnected();                // Check if sensor is connected
-    int getDeviceCount();              // Get number of connected devices
+    float readTemperature();
+    float readTemperatureFahrenheit();
+    bool isConnected();
+    int getDeviceCount();
     
-    // Request new temperature reading (non-blocking)
     void requestTemperatures();
-    
-    // Check if conversion is complete
     bool isConversionComplete();
     
 private:

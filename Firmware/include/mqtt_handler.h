@@ -25,28 +25,22 @@
 
 class MQTTHandler {
 public:
-    // Constructor
     MQTTHandler();
     
-    // Initialization
     bool init();
     
-    // Connection management
     bool connect();
     void disconnect();
     bool isConnected();
     void loop();
     
-    // Publishing
     bool publishSensorData(float temperature, float turbidity, String waterQuality);
     bool publishLEDStatus(String mode, uint8_t brightness, uint8_t r, uint8_t g, uint8_t b);
     bool publishStatus(String status);
     bool publishMessage(const char* topic, const char* payload);
     
-    // Subscription callback
     void setCallback(void (*callback)(char*, uint8_t*, unsigned int));
     
-    // Subscribe to topics
     bool subscribeToTopics();
     
 private:
@@ -55,7 +49,6 @@ private:
     unsigned long lastReconnectAttempt;
     static const unsigned long RECONNECT_INTERVAL = 5000;
     
-    // SSL/TLS configuration
     void setupTLS();
 };
 

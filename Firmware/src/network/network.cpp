@@ -5,7 +5,6 @@
 
 #include "network.h"
 
-// Namespace để lưu preferences
 #define PREF_NAMESPACE "wifi-config"
 #define PREF_SSID "ssid"
 #define PREF_PASSWORD "password"
@@ -35,17 +34,14 @@ bool NetworkManager::begin() {
     Serial.println("Network Manager - Initializing...");
     Serial.println("========================================");
     
-    // Mở Preferences để đọc cấu hình
     preferences.begin(PREF_NAMESPACE, false);
     
-    // Kiểm tra SSID đã được lưu chưa
     savedSSID = preferences.getString(PREF_SSID, "");
     savedPassword = preferences.getString(PREF_PASSWORD, "");
     
     if (savedSSID.length() == 0) {
-        // ===== SSID CHƯA ĐƯỢC LƯU =====
-        Serial.println("[INFO] SSID chua duoc luu!");
-        Serial.println("[INFO] Khoi dong che do Access Point...");
+        Serial.println("[INFO] No saved WiFi credentials found");
+        Serial.println("[INFO] Starting Access Point mode...");
         
         startAccessPoint();
         startWebServer();
@@ -53,18 +49,16 @@ bool NetworkManager::begin() {
         isAPMode = true;
         return false;
     } else {
-        // ===== SSID DA DUOC LUU =====
-        Serial.println("[INFO] Da tim thay cau hinh WiFi:");
+        Serial.println("[INFO] Found saved WiFi configuration:");
         Serial.print("  - SSID: ");
         Serial.println(savedSSID);
         Serial.println("  - Password: ********");
         
-        Serial.println("\n[INFO] Dang ket noi WiFi...");
+        Serial.println("\n[INFO] Connecting to WiFi...");
         
         WiFi.mode(WIFI_STA);
         WiFi.begin(savedSSID.c_str(), savedPassword.c_str());
         
-        // Đợi kết nối với timeout
         int timeout = 0;
         while (WiFi.status() != WL_CONNECTED && timeout < WIFI_CONNECT_TIMEOUT) {
             delay(500);
@@ -74,7 +68,7 @@ bool NetworkManager::begin() {
         Serial.println();
         
         if (WiFi.status() == WL_CONNECTED) {
-            Serial.println("[SUCCESS] Ket noi WiFi thanh cong!");
+            Serial.println("[SUCCESS] WiFi connected successfully!");
             Serial.print("[INFO] IP Address: ");
             Serial.println(WiFi.localIP());
             Serial.print("[INFO] Signal Strength: ");
@@ -84,9 +78,9 @@ bool NetworkManager::begin() {
             isAPMode = false;
             return true;
         } else {
-            Serial.println("[ERROR] Khong the ket noi WiFi!");
-            Serial.println("[INFO] Co the SSID/Password sai hoac mang khong kha dung.");
-            Serial.println("[INFO] Khoi dong che do Access Point de cau hinh lai...");
+            Serial.println("[ERROR] Could not connect to WiFi!");
+            Serial.println("[INFO] SSID/Password may be incorrect or network unavailable.");
+            Serial.println("[INFO] Starting Access Point for reconfiguration...");
             
             startAccessPoint();
             startWebServer();
@@ -103,19 +97,18 @@ void NetworkManager::startAccessPoint() {
     
     delay(100);
     
-    Serial.println("\n[INFO] Access Point da khoi dong:");
+    Serial.println("\n[INFO] Access Point started:");
     Serial.print("  - SSID: ");
     Serial.println(AP_SSID);
     if (strlen(AP_PASSWORD) > 0) {
-        Serial.println("  - Password: (da thiet lap)");
+        Serial.println("  - Password: (configured)");
     } else {
-        Serial.println("  - Password: (khong co - Open)");
+        Serial.println("  - Password: (none - Open)");
     }
     Serial.print("  - IP Address: ");
     Serial.println(WiFi.softAPIP());
-    Serial.println("\n[INFO] Truy cap http://192.168.4.1 de cau hinh WiFi");
+    Serial.println("\n[INFO] Access http://192.168.4.1 to configure WiFi");
     
-    // Hiển thị thông tin lên OLED
     displayAPInfo();
 }
 
@@ -128,11 +121,9 @@ void NetworkManager::displayAPInfo() {
     oledDisplay->setTextSize(1);
     oledDisplay->setTextColor(SSD1306_WHITE);
     
-    // Tiêu đề
     oledDisplay->setCursor(0, 0);
     oledDisplay->println("== WiFi Config ==");
     
-    // Thông tin AP
     oledDisplay->setCursor(0, 12);
     oledDisplay->print("SSID: ");
     oledDisplay->println(AP_SSID);
@@ -148,11 +139,10 @@ void NetworkManager::displayAPInfo() {
     oledDisplay->print("IP: ");
     oledDisplay->println(WiFi.softAPIP());
     
-    // Hướng dẫn
     oledDisplay->setCursor(0, 46);
-    oledDisplay->println("Ket noi WiFi nay");
+    oledDisplay->println("Connect to WiFi");
     oledDisplay->setCursor(0, 56);
-    oledDisplay->println("Truy cap: 192.168.4.1");
+    oledDisplay->println("Access: 192.168.4.1");
     
     oledDisplay->display();
 }
@@ -164,14 +154,13 @@ void NetworkManager::startWebServer() {
     
     server = new WebServer(80);
     
-    // Đăng ký các handler
     server->on("/", HTTP_GET, [this]() { handleRoot(); });
     server->on("/save", HTTP_POST, [this]() { handleSave(); });
     server->on("/reset", HTTP_GET, [this]() { handleReset(); });
     server->onNotFound([this]() { handleNotFound(); });
     
     server->begin();
-    Serial.println("[INFO] Web Server da khoi dong tren port 80");
+    Serial.println("[INFO] Web Server started on port 80");
 }
 
 void NetworkManager::stopWebServer() {
@@ -398,7 +387,7 @@ String NetworkManager::getSuccessPage() {
 }
 
 void NetworkManager::handleRoot() {
-    Serial.println("[WEB] Truy cap trang cau hinh");
+    Serial.println("[WEB] Configuration page accessed");
     server->send(200, "text/html", getConfigPage());
 }
 
@@ -406,33 +395,30 @@ void NetworkManager::handleSave() {
     String newSSID = server->arg("ssid");
     String newPassword = server->arg("password");
     
-    Serial.println("\n[WEB] Nhan yeu cau luu cau hinh:");
+    Serial.println("\n[WEB] Save configuration request:");
     Serial.print("  - SSID: ");
     Serial.println(newSSID);
     Serial.println("  - Password: ********");
     
     if (newSSID.length() == 0) {
-        server->send(400, "text/html", "<h1>Loi: SSID khong duoc de trong!</h1>");
+        server->send(400, "text/html", "<h1>Error: SSID cannot be empty!</h1>");
         return;
     }
     
-    // Lưu vào Preferences
     preferences.putString(PREF_SSID, newSSID);
     preferences.putString(PREF_PASSWORD, newPassword);
     
-    Serial.println("[INFO] Da luu cau hinh vao Preferences");
+    Serial.println("[INFO] Configuration saved to Preferences");
     
-    // Gửi trang thành công
     server->send(200, "text/html", getSuccessPage());
     
-    // Đợi một chút rồi khởi động lại
-    Serial.println("[INFO] Khoi dong lai ESP32 sau 5 giay...");
+    Serial.println("[INFO] Restarting ESP32 in 5 seconds...");
     delay(5000);
     ESP.restart();
 }
 
 void NetworkManager::handleReset() {
-    Serial.println("[WEB] Yeu cau xoa cau hinh");
+    Serial.println("[WEB] Clear configuration request");
     
     clearCredentials();
     
@@ -442,7 +428,7 @@ void NetworkManager::handleReset() {
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="refresh" content="2;url=/">
-    <title>Da Xoa</title>
+    <title>Configuration Cleared</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -463,8 +449,8 @@ void NetworkManager::handleReset() {
 </head>
 <body>
     <div class="msg">
-        <h2>🗑️ Da xoa cau hinh!</h2>
-        <p>Dang chuyen huong...</p>
+        <h2>🗑️ Configuration Cleared!</h2>
+        <p>Redirecting...</p>
     </div>
 </body>
 </html>
@@ -474,7 +460,7 @@ void NetworkManager::handleReset() {
 }
 
 void NetworkManager::handleNotFound() {
-    server->send(404, "text/plain", "404 - Khong tim thay trang");
+    server->send(404, "text/plain", "404 - Page not found");
 }
 
 bool NetworkManager::isAccessPointMode() {
@@ -496,7 +482,7 @@ String NetworkManager::getIPAddress() {
 void NetworkManager::clearCredentials() {
     preferences.remove(PREF_SSID);
     preferences.remove(PREF_PASSWORD);
-    Serial.println("[INFO] Da xoa cau hinh WiFi");
+    Serial.println("[INFO] WiFi configuration cleared");
 }
 
 bool NetworkManager::reconnect() {
@@ -504,7 +490,7 @@ bool NetworkManager::reconnect() {
         return false;
     }
     
-    Serial.println("[INFO] Dang ket noi lai WiFi...");
+    Serial.println("[INFO] Reconnecting to WiFi...");
     WiFi.disconnect();
     delay(1000);
     WiFi.begin(savedSSID.c_str(), savedPassword.c_str());
@@ -518,10 +504,10 @@ bool NetworkManager::reconnect() {
     Serial.println();
     
     if (WiFi.status() == WL_CONNECTED) {
-        Serial.println("[SUCCESS] Da ket noi lai WiFi!");
+        Serial.println("[SUCCESS] WiFi reconnected successfully!");
         return true;
     }
     
-    Serial.println("[ERROR] Khong the ket noi lai WiFi!");
+    Serial.println("[ERROR] Could not reconnect to WiFi!");
     return false;
 }

@@ -1,8 +1,6 @@
 /**
  * @file main.cpp
- * @brief Main application for ESP32 IoT system
- * Features: LED control, DS18B20 temperature sensor, Turbidity sensor, MQTT
- * communication
+ * @brief ESP32 IoT water monitoring system with LED control
  */
 
 #include <Arduino.h>
@@ -21,7 +19,6 @@
 #include "mqtt_handler.h"
 #include "turbidity_sensor.h"
 
-// ==================== Global Objects ====================
 LEDController ledController;
 ld2410 radar;
 TurbiditySensor turbiditySensor(TURBIDITY_SENSOR_PIN);
@@ -29,28 +26,24 @@ DS18B20Sensor temperatureSensor(DS18B20_PIN);
 MQTTHandler mqttHandler;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-// ==================== Timing Variables ====================
 unsigned long lastSensorRead = 0;
 unsigned long lastDataSend = 0;
 unsigned long lastLEDStatusPublish = 0;
 unsigned long lastDisplayUpdate = 0;
 
-// ==================== Sensor Data ====================
 float currentTemperature = 0.0;
 float currentTurbidity = 0.0;
 String currentWaterQuality = "Unknown";
 float currentPH = 7.0;
 
-// ==================== LED State ====================
 LEDMode lastLEDMode = MODE_OFF;
 uint8_t lastBrightness = DEFAULT_BRIGHTNESS;
 
-// ==================== Radar State ====================
-bool radarAutoMode =
-    false; // Auto mode: ON when human detected, OFF when no human
-bool radarEnabled = false; // Manual control: enable/disable radar
+// Auto mode: LED controlled by radar presence detection
+bool radarAutoMode = false;
+bool radarEnabled = false;
 unsigned long lastRadarCheck = 0;
-const unsigned long RADAR_CHECK_INTERVAL = 500; // Check radar every 500ms
+const unsigned long RADAR_CHECK_INTERVAL = 500;
 
 // ==================== Function Prototypes ====================
 void setupWiFi();
@@ -69,107 +62,82 @@ void checkRadarAndControlLED();
 void parseHexColor(const char *hexColor, uint8_t &r, uint8_t &g, uint8_t &b);
 float simulatePH();
 
-// ==================== Setup ====================
 void setup() {
-  // Initialize Serial
   Serial.begin(115200);
   delay(1000);
   Serial.println("\n\n=================================");
   Serial.println("ESP32 IoT Application Starting...");
   Serial.println("=================================\n");
 
-  // Setup WiFi
   setupWiFi();
-
-  // Setup NTP for time synchronization
   setupNTP();
-
-  // Setup OLED Display
   setupOLED();
 
-  // Configure ADC for turbidity sensor
+  // ADC must be configured with 11db attenuation for full 0-3.3V range
   analogReadResolution(12);
   analogSetAttenuation(ADC_11db);
-  // Also set per-pin attenuation to ensure correct range on selected pin
   analogSetPinAttenuation(TURBIDITY_SENSOR_PIN, ADC_11db);
 
-  // Initialize random seed for pH simulation
   randomSeed(analogRead(0));
 
-  // Initialize LED Controller
   if (!ledController.init()) {
     Serial.println("[ERROR] LED Controller initialization failed!");
   }
 
-  // Initialize Radar Sensor
   setupRadar();
   ledController.setRadarSensor(&radar);
-  radarEnabled = false; // Start with radar disabled
+  radarEnabled = false;
   radarAutoMode = false;
 
-  // Initialize Temperature Sensor
   if (!temperatureSensor.init()) {
     Serial.println("[ERROR] DS18B20 initialization failed!");
   }
 
-  // Initialize Turbidity Sensor
   if (!turbiditySensor.init()) {
     Serial.println("[ERROR] Turbidity Sensor initialization failed!");
   }
 
-  // Initialize MQTT
   if (!mqttHandler.init()) {
     Serial.println("[ERROR] MQTT initialization failed!");
   }
   mqttHandler.setCallback(mqttCallback);
   mqttHandler.connect();
 
-  // Set default LED mode
-  ledController.setMode(MODE_OFF); // Start with LED off
+  ledController.setMode(MODE_OFF);
 
   Serial.println("\n=================================");
   Serial.println("System Initialization Complete!");
   Serial.println("=================================\n");
 }
 
-// ==================== Main Loop ====================
 void loop() {
   unsigned long currentMillis = millis();
 
-  // Update radar sensor
   radar.read();
 
-  // Check radar and control LED if auto mode is enabled
   if (currentMillis - lastRadarCheck >= RADAR_CHECK_INTERVAL) {
     lastRadarCheck = currentMillis;
     checkRadarAndControlLED();
   }
 
-  // Update LED effects
   ledController.update();
-
-  // Handle MQTT
   mqttHandler.loop();
 
-  // Read sensors periodically
   if (currentMillis - lastSensorRead >= SENSOR_READ_INTERVAL) {
     lastSensorRead = currentMillis;
     readSensors();
   }
 
-  // Send data to MQTT server periodically
   if (currentMillis - lastDataSend >= DATA_SEND_INTERVAL) {
     lastDataSend = currentMillis;
     publishSensorData();
   }
 
-  // Update OLED display periodically
   if (currentMillis - lastDisplayUpdate >= DISPLAY_UPDATE_INTERVAL) {
     lastDisplayUpdate = currentMillis;
     updateDisplay();
   }
 
-  // Publish LED status if mode or brightness changed
   LEDMode currentMode = ledController.getMode();
   if (currentMode != lastLEDMode ||
       currentMillis - lastLEDStatusPublish >= 10000) {
@@ -178,11 +146,9 @@ void loop() {
     publishLEDStatus();
   }
 
-  // Small delay to prevent watchdog issues
   delay(10);
 }
 
-// ==================== WiFi Setup ====================
 void setupWiFi() {
   Serial.println("[WiFi] Connecting to: " + String(WIFI_SSID));
 
@@ -208,7 +174,6 @@ void setupWiFi() {
   }
 }
 
-// ==================== NTP Setup ====================
 void setupNTP() {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[NTP] Skipping - WiFi not connected");
@@ -218,7 +183,6 @@ void setupNTP() {
   Serial.println("[NTP] Configuring time...");
   configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
 
-  // Wait for time sync (max 5 seconds)
   int retries = 0;
   time_t now = time(nullptr);
   while (now < 24 * 3600 && retries < 10) {
@@ -240,7 +204,6 @@ void setupNTP() {
   }
 }
 
-// ==================== Radar Setup ====================
 void setupRadar() {
   Serial.println("[Radar] Initializing LD2410B...");
 
@@ -260,9 +223,7 @@ void setupRadar() {
   }
 }
 
-// ==================== Read Sensors ====================
 void readSensors() {
-  // Read temperature
   currentTemperature = temperatureSensor.readTemperature();
   if (currentTemperature != DEVICE_DISCONNECTED_C) {
     Serial.print("[Sensor] Temperature: ");
@@ -272,7 +233,6 @@ void readSensors() {
     Serial.println("[Sensor] Temperature: ERROR - Sensor disconnected");
   }
 
-  // Read turbidity
   currentTurbidity = turbiditySensor.readNTU();
   currentWaterQuality = turbiditySensor.getWaterQuality();
 
@@ -282,20 +242,17 @@ void readSensors() {
   Serial.print(currentWaterQuality);
   Serial.println(")");
 
-  // Simulate pH reading
   currentPH = simulatePH();
   Serial.print("[Sensor] pH: ");
   Serial.println(currentPH, 2);
 }
 
-// ==================== Publish Sensor Data ====================
 void publishSensorData() {
   if (!mqttHandler.isConnected()) {
     Serial.println("[MQTT] Not connected - skipping sensor data publish");
     return;
   }
 
-  // Create JSON document with all sensor data
   StaticJsonDocument<256> doc;
   doc["temperature"] = currentTemperature;
   doc["turbidity"] = currentTurbidity;
@@ -306,7 +263,6 @@ void publishSensorData() {
   String jsonString;
   serializeJson(doc, jsonString);
 
-  // Publish to MQTT
   bool success = mqttHandler.publishMessage(MQTT_TOPIC_SENSOR_DATA, jsonString.c_str());
 
   if (success) {
@@ -316,7 +272,6 @@ void publishSensorData() {
   }
 }
 
-// ==================== Publish LED Status ====================
 void publishLEDStatus() {
   if (!mqttHandler.isConnected()) {
     return;
@@ -351,12 +306,10 @@ void publishLEDStatus() {
   mqttHandler.publishLEDStatus(modeStr, lastBrightness, 255, 255, 255);
 }
 
-// ==================== MQTT Callback ====================
 void mqttCallback(char *topic, uint8_t *payload, unsigned int length) {
   Serial.print("[MQTT] Message received on topic: ");
   Serial.println(topic);
 
-  // Convert payload to string
   String message;
   for (unsigned int i = 0; i < length; i++) {
     message += (char)payload[i];
@@ -364,7 +317,6 @@ void mqttCallback(char *topic, uint8_t *payload, unsigned int length) {
   Serial.print("[MQTT] Payload: ");
   Serial.println(message);
 
-  // Parse JSON
   StaticJsonDocument<256> doc;
   DeserializationError error = deserializeJson(doc, message);
 
@@ -374,19 +326,14 @@ void mqttCallback(char *topic, uint8_t *payload, unsigned int length) {
     return;
   }
 
-  // Handle LED control messages
   if (strcmp(topic, MQTT_TOPIC_LED_CONTROL) == 0) {
     handleLEDControl(doc);
-  }
-  // Handle radar control messages
-  else if (strcmp(topic, MQTT_TOPIC_RADAR_CONTROL) == 0) {
+  } else if (strcmp(topic, MQTT_TOPIC_RADAR_CONTROL) == 0) {
     handleRadarControl(doc);
   }
 }
 
-// ==================== Handle LED Control ====================
 void handleLEDControl(JsonDocument &doc) {
-  // Handle presence_mode_enabled (radar auto mode)
   if (doc.containsKey("presence_mode_enabled")) {
     bool presenceModeEnabled = doc["presence_mode_enabled"].as<bool>();
     radarEnabled = presenceModeEnabled;
@@ -400,22 +347,18 @@ void handleLEDControl(JsonDocument &doc) {
     }
   }
 
-  // Handle led_is_on (manual LED on/off)
-  // If led_is_on is false, turn off LED and skip other settings
+  // If led_is_on is false, turn off and skip all other settings
   if (doc.containsKey("led_is_on")) {
     bool ledIsOn = doc["led_is_on"].as<bool>();
 
     if (!radarAutoMode) {
-      // Only apply manual control if not in presence mode
       if (!ledIsOn) {
-        // Turn OFF - skip all other LED settings
         ledController.setMode(MODE_OFF);
         Serial.println("[Control] LED manually turned OFF - ignoring other settings");
         publishLEDStatus();
         publishRadarStatus();
-        return; // Exit early to skip mode/brightness/color settings
+        return;
       } else {
-        // Turn ON - continue to process mode/brightness/color
         if (ledController.getMode() == MODE_OFF) {
           ledController.setMode(MODE_BASIC);
         }
@@ -424,7 +367,6 @@ void handleLEDControl(JsonDocument &doc) {
     }
   }
 
-  // Handle led_mode change
   bool modeSpecified = doc.containsKey("led_mode");
   if (modeSpecified) {
     String mode = doc["led_mode"].as<String>();
@@ -446,7 +388,6 @@ void handleLEDControl(JsonDocument &doc) {
     Serial.println("[Control] LED mode changed to: " + mode);
   }
 
-  // Handle brightness change
   if (doc.containsKey("brightness")) {
     uint8_t brightness = doc["brightness"];
     ledController.setBrightness(brightness);
@@ -454,14 +395,12 @@ void handleLEDControl(JsonDocument &doc) {
     Serial.println("[Control] Brightness changed to: " + String(brightness));
   }
 
-  // Handle color change (hex format like #FF00AA)
-  // Only apply color if mode is "basic"/"static" or no mode was specified
+  // Color only applies to basic/static mode
   if (doc.containsKey("color")) {
     const char *hexColor = doc["color"];
     uint8_t r, g, b;
     parseHexColor(hexColor, r, g, b);
 
-    // Only set custom color if no mode was specified, or if mode is basic/static
     if (!modeSpecified || ledController.getMode() == MODE_BASIC) {
       ledController.setCustomColor(r, g, b);
       Serial.print("[Control] Color changed to ");
@@ -478,12 +417,10 @@ void handleLEDControl(JsonDocument &doc) {
     }
   }
 
-  // Publish updated status
   publishLEDStatus();
   publishRadarStatus();
 }
 
-// ==================== Handle Radar Control ====================
 void handleRadarControl(JsonDocument &doc) {
   // Handle radar enable/disable
   if (doc.containsKey("enabled")) {
@@ -533,7 +470,6 @@ void checkRadarAndControlLED() {
       publishRadarStatus();
     }
   } else {
-    // No human detected or beyond 20m - turn LED OFF
     if (ledController.getMode() != MODE_OFF) {
       ledController.setMode(MODE_OFF);
       Serial.println("[Radar] No human detected - LED OFF");
@@ -542,13 +478,11 @@ void checkRadarAndControlLED() {
   }
 }
 
-// ==================== Publish Radar Status ====================
 void publishRadarStatus() {
   if (!mqttHandler.isConnected()) {
     return;
   }
 
-  // Create JSON document
   StaticJsonDocument<256> doc;
   doc["enabled"] = radarEnabled;
   doc["autoMode"] = radarAutoMode;
@@ -561,34 +495,27 @@ void publishRadarStatus() {
   doc["distance"] = distance;
   doc["timestamp"] = millis();
 
-  // Serialize JSON to string
   char buffer[256];
   serializeJson(doc, buffer);
 
-  // Publish to radar status topic
   mqttHandler.publishMessage(MQTT_TOPIC_RADAR_STATUS, buffer);
 
   Serial.println("[MQTT] Published radar status: " + String(buffer));
 }
 
-// ==================== Parse Hex Color ====================
 void parseHexColor(const char *hexColor, uint8_t &r, uint8_t &g, uint8_t &b) {
-  // Skip '#' if present
   const char *colorStr = hexColor;
   if (colorStr[0] == '#') {
     colorStr++;
   }
 
-  // Parse hex string
   long colorValue = strtol(colorStr, NULL, 16);
 
-  // Extract RGB components
   r = (colorValue >> 16) & 0xFF;
   g = (colorValue >> 8) & 0xFF;
   b = colorValue & 0xFF;
 }
 
-// ==================== Setup OLED Display ====================
 void setupOLED() {
   Serial.println("[OLED] Initializing SSD1306...");
 
@@ -614,13 +541,11 @@ void setupOLED() {
   delay(2000);
 }
 
-// ==================== Update OLED Display ====================
 void updateDisplay() {
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
 
-  // Line 1: Temperature
   display.setCursor(0, 0);
   display.print(F("Temp: "));
   if (currentTemperature != DEVICE_DISCONNECTED_C) {
@@ -630,7 +555,6 @@ void updateDisplay() {
     display.print(F("ERR"));
   }
 
-  // Line 2: Turbidity
   display.setCursor(0, 12);
   display.print(F("Turb: "));
   if (currentTurbidity >= 0) {
@@ -640,12 +564,10 @@ void updateDisplay() {
     display.print(F("ERR"));
   }
 
-  // Line 3: pH
   display.setCursor(0, 24);
   display.print(F("pH: "));
   display.print(currentPH, 2);
 
-  // Line 4: LED Mode
   display.setCursor(0, 36);
   display.print(F("LED: "));
   LEDMode mode = ledController.getMode();
@@ -672,7 +594,6 @@ void updateDisplay() {
     display.print(F("UNKNOWN"));
   }
 
-  // Line 5: Radar Mode
   display.setCursor(0, 48);
   display.print(F("Radar: "));
   if (radarAutoMode) {
@@ -683,7 +604,6 @@ void updateDisplay() {
     display.print(F("OFF"));
   }
 
-  // Line 6: Presence Detection
   display.setCursor(0, 56);
   if (radarEnabled && radar.presenceDetected()) {
     uint16_t distance = radar.stationaryTargetDistance();
@@ -707,24 +627,18 @@ void updateDisplay() {
   display.display();
 }
 
-// ==================== Simulate pH Sensor ====================
 float simulatePH() {
-  // Generate random pH value between PH_MIN and PH_MAX
-  // Add slight variations to simulate realistic sensor behavior
   static float lastPH = 7.0;
   static unsigned long lastUpdate = 0;
   
   unsigned long currentTime = millis();
   
-  // Update pH value every 2 seconds with small random changes
   if (currentTime - lastUpdate >= 2000) {
     lastUpdate = currentTime;
     
-    // Small random change (-0.05 to +0.05)
     float change = (random(-50, 51) / 1000.0);
     lastPH += change;
     
-    // Constrain to valid range
     lastPH = constrain(lastPH, PH_MIN, PH_MAX);
   }
   

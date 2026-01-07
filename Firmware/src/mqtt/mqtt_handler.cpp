@@ -46,13 +46,11 @@ MQTTHandler::MQTTHandler() {
 }
 
 bool MQTTHandler::init() {
-    // Setup TLS/SSL
     setupTLS();
     
-    // Create MQTT client
     mqttClient = new PubSubClient(wifiClient);
     mqttClient->setServer(MQTT_SERVER, MQTT_PORT);
-    mqttClient->setBufferSize(512);  // Increase buffer for larger messages
+    mqttClient->setBufferSize(512);
     
     Serial.println("[MQTT] Handler initialized");
     Serial.println("[MQTT] Server: " + String(MQTT_SERVER));
@@ -62,7 +60,6 @@ bool MQTTHandler::init() {
 }
 
 void MQTTHandler::setupTLS() {
-    // Set CA certificate for SSL/TLS
     wifiClient.setCACert(root_ca);
     
     Serial.println("[MQTT] TLS/SSL configured");
@@ -75,14 +72,11 @@ bool MQTTHandler::connect() {
     
     Serial.print("[MQTT] Connecting to broker...");
     
-    // Attempt to connect
     if (mqttClient->connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PASSWORD)) {
         Serial.println(" Connected!");
         
-        // Subscribe to control topics
         subscribeToTopics();
         
-        // Publish online status
         publishStatus("online");
         
         return true;
@@ -168,18 +162,15 @@ bool MQTTHandler::publishSensorData(float temperature, float turbidity, String w
         return false;
     }
     
-    // Create JSON document
     StaticJsonDocument<256> doc;
-    doc["temperature"] = round(temperature * 100) / 100.0;  // Round to 2 decimal places
+    doc["temperature"] = round(temperature * 100) / 100.0;
     doc["turbidity"] = round(turbidity * 100) / 100.0;
     doc["waterQuality"] = waterQuality;
     doc["timestamp"] = millis();
     
-    // Serialize JSON to string
     char buffer[256];
     serializeJson(doc, buffer);
     
-    // Publish to sensor data topic
     bool success = mqttClient->publish(MQTT_TOPIC_SENSOR_DATA, buffer);
     
     if (success) {
@@ -196,7 +187,6 @@ bool MQTTHandler::publishLEDStatus(String mode, uint8_t brightness, uint8_t r, u
         return false;
     }
     
-    // Create JSON document
     StaticJsonDocument<256> doc;
     doc["mode"] = mode;
     doc["brightness"] = brightness;
@@ -205,11 +195,9 @@ bool MQTTHandler::publishLEDStatus(String mode, uint8_t brightness, uint8_t r, u
     doc["color"]["b"] = b;
     doc["timestamp"] = millis();
     
-    // Serialize JSON to string
     char buffer[256];
     serializeJson(doc, buffer);
     
-    // Publish to LED status topic
     bool success = mqttClient->publish(MQTT_TOPIC_LED_STATUS, buffer);
     
     if (success) {
@@ -226,18 +214,15 @@ bool MQTTHandler::publishStatus(String status) {
         return false;
     }
     
-    // Create JSON document
     StaticJsonDocument<128> doc;
     doc["status"] = status;
     doc["timestamp"] = millis();
     doc["clientId"] = MQTT_CLIENT_ID;
     
-    // Serialize JSON to string
     char buffer[128];
     serializeJson(doc, buffer);
     
-    // Publish to status topic
-    bool success = mqttClient->publish(MQTT_TOPIC_STATUS, buffer, true);  // Retained message
+    bool success = mqttClient->publish(MQTT_TOPIC_STATUS, buffer, true);
     
     if (success) {
         Serial.println("[MQTT] Published status: " + status);

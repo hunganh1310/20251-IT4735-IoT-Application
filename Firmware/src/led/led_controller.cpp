@@ -10,11 +10,9 @@
 #include "config.h"
 #include <time.h>
 
-
-// Physical constants for black body radiation
-const float h = 6.626e-34;  // Planck's constant (J·s)
-const float c = 3.0e8;      // Speed of light (m/s)
-const float k = 1.381e-23;  // Boltzmann constant (J/K)
+const float h = 6.626e-34;
+const float c = 3.0e8;
+const float k = 1.381e-23;
 
 LEDController::LEDController() {
     currentMode = MODE_OFF;
@@ -122,9 +120,7 @@ void LEDController::setCustomColor(uint8_t r, uint8_t g, uint8_t b) {
     currentMode = MODE_BASIC;
 }
 
-// ==================== Sky Simulation Effect ====================
 void LEDController::initConvolution() {
-    // Initialize cosine kernel for smooth transitions
     for(int i = 0; i < NUM_LEDS; i++) {
         sunSignal[i] = 0;
         convolvedSignal[i] = 0;
@@ -133,8 +129,6 @@ void LEDController::initConvolution() {
 }
 
 void LEDController::buildSunKernel(int radius) {
-    // Raised cosine (Hann) window centered, normalized to peak 1.0
-    // Kernel stored in sunKernel with length NUM_LEDS (unused entries set 0)
     for(int i = 0; i < NUM_LEDS; i++) sunKernel[i] = 0.0f;
     if(radius < 1) { sunKernel[0] = 1.0f; return; }
     for(int d = -radius; d <= radius; d++) {
@@ -183,9 +177,8 @@ void LEDController::applySunConvolution(int centerIndex, float amplitude) {
         sunSignal[i] = 0.0f;
         convolvedSignal[i] = 0.0f;
     }
-    sunSignal[centerIndex] = amplitude; // delta pulse
+    sunSignal[centerIndex] = amplitude;
     int R = sunKernelRadius;
-    // Convolution with circular wrap
     for(int led = 0; led < NUM_LEDS; led++) {
         float acc = 0.0f;
         for(int d = -R; d <= R; d++) {
@@ -193,7 +186,7 @@ void LEDController::applySunConvolution(int centerIndex, float amplitude) {
         float k = sunKernel[d + R];
         acc += sunSignal[src] * k;
         }
-        convolvedSignal[led] = acc; // 0..amplitude
+        convolvedSignal[led] = acc;
     }
 }
 
@@ -271,10 +264,9 @@ void LEDController::skySimulationEffect() {
     float hourFloat = timeinfo->tm_hour + timeinfo->tm_min / 60.0;
     float sunTemp = getSunColorTemp(hourFloat);
     int sunIndex = getSunPositionIndex(hourFloat);
-    float sunIntensity = getSunIntensity(hourFloat); // 0..1
+    float sunIntensity = getSunIntensity(hourFloat);
     applySunConvolution(sunIndex, sunIntensity);
     
-    // Base ambient color (dimmer at night)
     CRGB ambient;
     if (sunTemp > 0) {
         SkyColor skyColor = colorTempToRGB(sunTemp);
@@ -283,22 +275,19 @@ void LEDController::skySimulationEffect() {
         ambient = CRGB(0, 0, 10);
     }
 
-    // Highlight color (warmer at low sunTemp, neutral midday)
     SkyColor sunColor = colorTempToRGB(max(sunTemp, 2000.0f));
 
     for(int i = 0; i < NUM_LEDS; i++) {
-        float highlight = convolvedSignal[i]; // 0..1
-        // Mix ambient with sun highlight (linear blend)
+        float highlight = convolvedSignal[i];
         float mixR = ambient.r + highlight * (sunColor.r - ambient.r);
         float mixG = ambient.g + highlight * (sunColor.g - ambient.g);
         float mixB = ambient.b + highlight * (sunColor.b - ambient.b);
-        // Gentle gamma correction (approx)
         leds[i] = CRGB((uint8_t)mixR, (uint8_t)mixG, (uint8_t)mixB);
     }
 
     static unsigned long lastLog = 0;
     unsigned long nowMs = millis();
-    if(nowMs - lastLog > 5000) { // log every 5s
+    if(nowMs - lastLog > 5000) {
         Serial.print("[LED] Sun idx:"); Serial.print(sunIndex);
         Serial.print(" intensity:"); Serial.print(sunIntensity, 3);
         Serial.print(" temp:"); Serial.println(sunTemp);
@@ -306,14 +295,12 @@ void LEDController::skySimulationEffect() {
     }
 }
 
-// ==================== Rain Effect ====================
 void LEDController::rainEffect() {
     static unsigned long lastLightning = 0;
     static bool lightningActive = false;
     static int lightningBrightness = 0;
     static int lightningPosition = 0;
     
-    // Base stormy sky - gray and slightly brighter
     for(int i = 0; i < NUM_LEDS; i++) {
         leds[i] = CRGB(6, 6, 6);
         leds[i].r += random(-1, 2);
@@ -321,13 +308,11 @@ void LEDController::rainEffect() {
         leds[i].b += random(-1, 2);
     }
     
-    // Random raindrops
     if(random(100) < 30) {
         int pos = random(NUM_LEDS);
         leds[pos] = CRGB(2, 2, 3);
     }
     
-    // Lightning - 3 continuous LEDs at random position
     unsigned long now = millis();
     if(!lightningActive && (now - lastLightning > random(3000, 8000))) {
         lightningActive = true;
@@ -337,7 +322,6 @@ void LEDController::rainEffect() {
     }
     
     if(lightningActive) {
-        // Light up 3 continuous LEDs
         for(int i = 0; i < 3; i++) {
             int ledIndex = (lightningPosition + i) % NUM_LEDS;
             leds[ledIndex] = CRGB(lightningBrightness, lightningBrightness, lightningBrightness + 20);
@@ -350,22 +334,18 @@ void LEDController::rainEffect() {
     }
 }
 
-// ==================== Meteor Effect ====================
 void LEDController::meteorEffect() {
     static int meteorPos[3] = {0, 20, 40};
     static int meteorSpeed[3] = {2, 3, 2};
     
-    // Fade all LEDs
     for(int i = 0; i < NUM_LEDS; i++) {
         leds[i].fadeToBlackBy(64);
     }
     
-    // Draw meteors
     for(int m = 0; m < 3; m++) {
         if(meteorPos[m] < NUM_LEDS) {
         leds[meteorPos[m]] = CRGB(255, 200, 100);
         
-        // Trail
         for(int j = 1; j < 8; j++) {
             if(meteorPos[m] - j >= 0) {
             leds[meteorPos[m] - j] = CRGB(255/(j+1), 200/(j+1), 100/(j+1));
@@ -382,7 +362,6 @@ void LEDController::meteorEffect() {
     delay(50);
 }
 
-// ==================== Apocalypse Effect ====================
 void LEDController::apocalypseEffect() {
     for(int i = 0; i < NUM_LEDS; i++) {
         int flicker = random(50, 255);

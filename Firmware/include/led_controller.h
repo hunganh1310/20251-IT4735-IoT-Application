@@ -22,28 +22,21 @@ enum LEDMode {
 
 class LEDController {
 public:
-    // Constructor
     LEDController();
     
-    // Initialization
     bool init();
     
-    // Set radar sensor for automatic presence detection
     void setRadarSensor(ld2410* radarSensor);
     
-    // Automatic detection control
-    void enableAutoDetection(bool enabled);  // Turn ON/OFF automatic detection
+    void enableAutoDetection(bool enabled);
     bool isAutoDetectionEnabled();
     
-    // Mode control
     void setMode(LEDMode mode);
     LEDMode getMode();
     void setBrightness(uint8_t brightness);
     
-    // Main update loop
     void update();
     
-    // Effect functions
     void skySimulationEffect();
     void rainEffect();
     void meteorEffect();
@@ -52,24 +45,19 @@ public:
     void off();
     
 private:
-    // LED array - using static array sized from config.h
     CRGB leds[NUM_LEDS];
     
-    // Radar sensor for presence detection
     ld2410* radar = nullptr;
     
     LEDMode currentMode;
     uint8_t brightness;
-    CRGB customColor = CRGB(255,255,255); // default white for BASIC mode
+    CRGB customColor = CRGB(255,255,255);
     
-    // Auto detection state
     bool autoDetectionEnabled = false;
-    LEDMode lastManualMode = MODE_BASIC;  // Remember last mode before auto turned off LEDs
+    LEDMode lastManualMode = MODE_BASIC;
     
-    // Helper for presence detection
     bool checkPresence();
     
-    // Helper functions for sky simulation (formerly sunrise/sunset)
     float getSunColorTemp(float hourFloat);
     struct SkyColor {
         uint8_t r, g, b;
@@ -77,12 +65,10 @@ private:
     SkyColor colorTempToRGB(float temp);
     float planckRadiance(float lambda_nm, float T);
     
-    // Effect state variables - initialized to prevent garbage values
     unsigned long lastUpdate = 0;
     int effectState = 0;
     
-    // Convolution for smooth sky simulation transitions
-    // Arrays sized to match NUM_LEDS from config.h
+    // Sky simulation arrays
     float sunSignal[NUM_LEDS];
     float convolvedSignal[NUM_LEDS];
     void initConvolution();
@@ -91,9 +77,9 @@ private:
     int getSunPositionIndex(float hourFloat);
     float getSunIntensity(float hourFloat);
     
-    // Raised-cosine kernel for point-like sun highlight
-    static constexpr int MAX_KERNEL_RADIUS = 15; // Maximum safe radius
-    int sunKernelRadius = 8; // adjustable highlight width in LEDs (must be <= MAX_KERNEL_RADIUS)
+    // Raised-cosine kernel for sun highlight
+    static constexpr int MAX_KERNEL_RADIUS = 15;
+    int sunKernelRadius = 8;
     float sunKernel[NUM_LEDS];
 };
 
