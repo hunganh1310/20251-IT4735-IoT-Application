@@ -24,7 +24,6 @@ export default function Sidebar({ open }) {
 
   const menuItems = [
     { text: "Home", icon: <HomeIcon />, path: "/dashboard/home" },
-    { text: "Users", icon: <PeopleIcon />, path: "/dashboard/users" },
     { text: "Settings", icon: <SettingsIcon />, path: "/dashboard/settings" },
   ];
 
